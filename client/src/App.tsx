@@ -14,6 +14,7 @@ import Forums from "@/pages/Forums";
 import Resources from "@/pages/Resources";
 import Podcasts from "@/pages/Podcasts";
 import Community from "@/pages/Community";
+import Admin from "@/pages/Admin";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -30,6 +31,7 @@ function Router() {
           <Route path="/resources" component={Resources} />
           <Route path="/podcasts" component={Podcasts} />
           <Route path="/community" component={Community} />
+          <Route path="/admin" component={Admin} />
         </>
       )}
       <Route component={NotFound} />

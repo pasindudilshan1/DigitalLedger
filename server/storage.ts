@@ -234,13 +234,15 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     // Update discussion reply count and last reply time
-    await db
-      .update(forumDiscussions)
-      .set({
-        replyCount: sql`${forumDiscussions.replyCount} + 1`,
-        lastReplyAt: new Date(),
-      })
-      .where(eq(forumDiscussions.id, reply.discussionId!));
+    if (reply.discussionId) {
+      await db
+        .update(forumDiscussions)
+        .set({
+          replyCount: sql`${forumDiscussions.replyCount} + 1`,
+          lastReplyAt: new Date(),
+        })
+        .where(eq(forumDiscussions.id, reply.discussionId));
+    }
     
     return created;
   }
@@ -292,18 +294,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getResources(type?: string, category?: string, limit = 20): Promise<Resource[]> {
-    let query = db
+    const conditions = [];
+    if (type) conditions.push(eq(resources.type, type));
+    if (category) conditions.push(eq(resources.category, category));
+    
+    const query = db
       .select()
       .from(resources)
       .orderBy(desc(resources.createdAt))
       .limit(limit);
     
-    const conditions = [];
-    if (type) conditions.push(eq(resources.type, type));
-    if (category) conditions.push(eq(resources.category, category));
-    
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      return await query.where(and(...conditions));
     }
     
     return await query;

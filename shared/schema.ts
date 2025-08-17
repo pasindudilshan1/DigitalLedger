@@ -89,7 +89,7 @@ export const forumReplies = pgTable("forum_replies", {
   content: text("content").notNull(),
   discussionId: varchar("discussion_id").references(() => forumDiscussions.id),
   authorId: varchar("author_id").references(() => users.id),
-  parentReplyId: varchar("parent_reply_id").references(() => forumReplies.id),
+  parentReplyId: varchar("parent_reply_id").references((): any => forumReplies.id),
   likes: integer("likes").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });

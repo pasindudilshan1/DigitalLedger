@@ -27,6 +27,7 @@ export function Navigation() {
     { name: "Resources", href: "/resources" },
     { name: "Podcasts", href: "/podcasts" },
     { name: "Community", href: "/community" },
+    { name: "Admin", href: "/admin" },
   ];
 
   const isActive = (href: string) => location === href;
