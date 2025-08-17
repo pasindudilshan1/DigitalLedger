@@ -274,7 +274,8 @@ export default function Admin() {
                               placeholder="Brief summary of the article..." 
                               className="resize-none" 
                               rows={3}
-                              {...field} 
+                              {...field}
+                              value={field.value || ''}
                               data-testid="input-article-excerpt"
                             />
                           </FormControl>
@@ -339,7 +340,7 @@ export default function Admin() {
                           <FormItem>
                             <FormLabel>Source Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g., TechCrunch, Forbes..." {...field} data-testid="input-article-source-name" />
+                              <Input placeholder="e.g., TechCrunch, Forbes..." {...field} value={field.value || ''} data-testid="input-article-source-name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -357,7 +358,8 @@ export default function Admin() {
                             <Input 
                               type="url" 
                               placeholder="https://example.com/original-article" 
-                              {...field} 
+                              {...field}
+                              value={field.value || ''}
                               data-testid="input-article-source-url"
                             />
                           </FormControl>
@@ -451,7 +453,8 @@ export default function Admin() {
                               <Input 
                                 type="number" 
                                 placeholder="1" 
-                                {...field} 
+                                {...field}
+                                value={field.value || ''}
                                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                 data-testid="input-podcast-episode-number"
                               />
@@ -468,7 +471,7 @@ export default function Admin() {
                           <FormItem>
                             <FormLabel>Duration</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g., 45:30" {...field} data-testid="input-podcast-duration" />
+                              <Input placeholder="e.g., 45:30" {...field} value={field.value || ''} data-testid="input-podcast-duration" />
                             </FormControl>
                             <FormDescription>
                               Format: MM:SS or HH:MM:SS
@@ -490,7 +493,8 @@ export default function Admin() {
                               placeholder="Describe what this episode covers..." 
                               className="resize-none" 
                               rows={4}
-                              {...field} 
+                              {...field}
+                              value={field.value || ''}
                               data-testid="input-podcast-description"
                             />
                           </FormControl>
@@ -507,7 +511,7 @@ export default function Admin() {
                           <FormItem>
                             <FormLabel>Host Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Host's name" {...field} data-testid="input-podcast-host" />
+                              <Input placeholder="Host's name" {...field} value={field.value || ''} data-testid="input-podcast-host" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -521,7 +525,7 @@ export default function Admin() {
                           <FormItem>
                             <FormLabel>Guest Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Guest's name (optional)" {...field} data-testid="input-podcast-guest" />
+                              <Input placeholder="Guest's name (optional)" {...field} value={field.value || ''} data-testid="input-podcast-guest" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -536,7 +540,7 @@ export default function Admin() {
                         <FormItem>
                           <FormLabel>Guest Title</FormLabel>
                           <FormControl>
-                            <Input placeholder="Guest's professional title (optional)" {...field} data-testid="input-podcast-guest-title" />
+                            <Input placeholder="Guest's professional title (optional)" {...field} value={field.value || ''} data-testid="input-podcast-guest-title" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
