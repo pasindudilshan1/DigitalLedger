@@ -46,11 +46,11 @@ export default function Forums() {
 
   const getCategoryIcon = (name: string) => {
     switch (name.toLowerCase()) {
-      case 'ai implementation':
-        return <Brain className="h-6 w-6" />;
-      case 'regulatory compliance':
+      case 'threat intelligence':
         return <Shield className="h-6 w-6" />;
-      case 'learning & development':
+      case 'security operations':
+        return <Brain className="h-6 w-6" />;
+      case 'certifications & career':
         return <Award className="h-6 w-6" />;
       default:
         return <MessageSquare className="h-6 w-6" />;
@@ -59,11 +59,11 @@ export default function Forums() {
 
   const getCategoryColor = (name: string) => {
     switch (name.toLowerCase()) {
-      case 'ai implementation':
+      case 'threat intelligence':
         return "bg-primary/10 text-primary dark:bg-ai-teal/10 dark:text-ai-teal";
-      case 'regulatory compliance':
+      case 'security operations':
         return "bg-accent/10 text-accent";
-      case 'learning & development':
+      case 'certifications & career':
         return "bg-secondary/10 text-secondary dark:bg-ai-teal/10 dark:text-ai-teal";
       default:
         return "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300";
@@ -111,7 +111,7 @@ export default function Forums() {
               Community Forums
             </h1>
             <p className="text-gray-600 dark:text-gray-300 text-lg max-w-3xl">
-              Engage with fellow professionals, share insights, and get answers to your AI accounting challenges
+              Engage with fellow professionals, share insights, and get answers to your cybersecurity challenges
             </p>
           </div>
           
