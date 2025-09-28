@@ -37,8 +37,21 @@ export const users = pgTable("users", {
   bio: text("bio"),
   points: integer("points").default(0),
   badges: text("badges").array(),
+  role: varchar("role").default("member"), // admin, moderator, member
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User invitations for email-based user management
+export const userInvitations = pgTable("user_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique().notNull(),
+  role: varchar("role").notNull().default("member"), // admin, moderator, member
+  invitedBy: varchar("invited_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  acceptedAt: timestamp("accepted_at"),
+  revokedAt: timestamp("revoked_at"),
 });
 
 // News articles
@@ -161,6 +174,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   replies: many(forumReplies),
   resources: many(resources),
   interactions: many(userInteractions),
+  sentInvitations: many(userInvitations),
+}));
+
+export const userInvitationsRelations = relations(userInvitations, ({ one }) => ({
+  invitedBy: one(users, {
+    fields: [userInvitations.invitedBy],
+    references: [users.id],
+  }),
 }));
 
 export const newsArticlesRelations = relations(newsArticles, ({ one }) => ({
@@ -270,6 +291,13 @@ export const insertUserInteractionSchema = createInsertSchema(userInteractions).
   createdAt: true,
 });
 
+export const insertUserInvitationSchema = createInsertSchema(userInvitations).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+  revokedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -289,3 +317,5 @@ export type Poll = typeof polls.$inferSelect;
 export type InsertPoll = z.infer<typeof insertPollSchema>;
 export type UserInteraction = typeof userInteractions.$inferSelect;
 export type InsertUserInteraction = z.infer<typeof insertUserInteractionSchema>;
+export type UserInvitation = typeof userInvitations.$inferSelect;
+export type InsertUserInvitation = z.infer<typeof insertUserInvitationSchema>;
