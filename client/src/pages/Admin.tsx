@@ -18,7 +18,8 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { apiRequest } from "@/lib/queryClient";
 import { insertNewsArticleSchema, insertPodcastEpisodeSchema, insertUserInvitationSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
-import { Upload, FileText, Mic, Image, AudioWaveform, Users, UserPlus, Shield, ShieldCheck, Edit, Trash2, AlertCircle } from "lucide-react";
+import { Upload, FileText, Mic, Image, AudioWaveform, Users, UserPlus, Shield, ShieldCheck, Edit, Trash2, AlertCircle, Home } from "lucide-react";
+import { Link } from "wouter";
 import type { UploadResult } from "@uppy/core";
 
 // Extended schemas for form validation
@@ -498,9 +499,17 @@ export default function Admin() {
     <div className="container mx-auto py-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2" data-testid="text-admin-title">
-            Content Control Panel
-          </h1>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white" data-testid="text-admin-title">
+              Content Control Panel
+            </h1>
+            <Link href="/">
+              <Button variant="outline" className="flex items-center gap-2" data-testid="button-home">
+                <Home className="h-4 w-4" />
+                Return to Home
+              </Button>
+            </Link>
+          </div>
           <p className="text-gray-600 dark:text-gray-300" data-testid="text-admin-description">
             Create and manage articles and podcast episodes for the Digital Ledger community.
           </p>
