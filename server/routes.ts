@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 import {
   ObjectStorageService,
   ObjectNotFoundError,
@@ -14,6 +14,7 @@ import {
   insertResourceSchema,
   insertPodcastEpisodeSchema,
   insertPollSchema,
+  insertUserInvitationSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -29,6 +30,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // User management routes (admin only)
+  app.get('/api/users', isAdmin, async (req: any, res) => {
+    try {
+      const { q, role, active } = req.query;
+      const filters: any = {};
+      if (q) filters.q = q as string;
+      if (role) filters.role = role as string;
+      if (active !== undefined) filters.active = active === 'true';
+      
+      const users = await storage.listUsers(filters);
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post('/api/users/invite', isAdmin, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const invitationData = insertUserInvitationSchema.parse({
+        ...req.body,
+        invitedBy: adminUserId,
+      });
+      
+      const invitation = await storage.createInvitation(invitationData);
+      res.json(invitation);
+    } catch (error) {
+      console.error("Error creating invitation:", error);
+      res.status(500).json({ message: "Failed to create invitation" });
+    }
+  });
+
+  app.patch('/api/users/:id/role', isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const { role } = req.body;
+      const adminUserId = req.user.claims.sub;
+      
+      // Prevent demoting the last admin
+      if (role !== 'admin') {
+        const admins = await storage.listUsers({ role: 'admin', active: true });
+        if (admins.length === 1 && admins[0].id === userId) {
+          return res.status(400).json({ message: "Cannot demote the last admin" });
+        }
+      }
+      
+      // Prevent self-demotion if last admin
+      if (userId === adminUserId && role !== 'admin') {
+        const admins = await storage.listUsers({ role: 'admin', active: true });
+        if (admins.length === 1) {
+          return res.status(400).json({ message: "Cannot demote yourself as the last admin" });
+        }
+      }
+      
+      await storage.setUserRole(userId, role);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
+  app.patch('/api/users/:id/status', isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const { isActive } = req.body;
+      const adminUserId = req.user.claims.sub;
+      
+      // Prevent self-deactivation if last admin
+      if (!isActive && userId === adminUserId) {
+        const admins = await storage.listUsers({ role: 'admin', active: true });
+        if (admins.length === 1) {
+          return res.status(400).json({ message: "Cannot deactivate yourself as the last admin" });
+        }
+      }
+      
+      await storage.setUserActive(userId, isActive);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      res.status(500).json({ message: "Failed to update user status" });
+    }
+  });
+
+  app.get('/api/users/invitations', isAdmin, async (req: any, res) => {
+    try {
+      const invitations = await storage.listInvitations();
+      res.json(invitations);
+    } catch (error) {
+      console.error("Error fetching invitations:", error);
+      res.status(500).json({ message: "Failed to fetch invitations" });
+    }
+  });
+
+  app.post('/api/users/invitations/:id/revoke', isAdmin, async (req: any, res) => {
+    try {
+      const invitationId = req.params.id;
+      await storage.revokeInvitation(invitationId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error revoking invitation:", error);
+      res.status(500).json({ message: "Failed to revoke invitation" });
     }
   });
 

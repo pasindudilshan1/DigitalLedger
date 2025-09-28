@@ -57,12 +57,22 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  // Check for pending invitation
+  const invitation = await storage.findInvitationByEmail(claims["email"]);
+  let role = "member"; // default role
+  
+  if (invitation) {
+    role = invitation.role;
+    await storage.markInvitationAccepted(invitation.id);
+  }
+
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    role: role,
   });
 }
 
@@ -136,6 +146,12 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
+    // Check if user is still active in database
+    const userId = user.claims.sub;
+    const dbUser = await storage.getUser(userId);
+    if (!dbUser || !dbUser.isActive) {
+      return res.status(401).json({ message: "Account deactivated" });
+    }
     return next();
   }
 
@@ -149,9 +165,38 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     const config = await getOidcConfig();
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
+    
+    // Check if user is still active after token refresh
+    const userId = user.claims.sub;
+    const dbUser = await storage.getUser(userId);
+    if (!dbUser || !dbUser.isActive) {
+      return res.status(401).json({ message: "Account deactivated" });
+    }
+    
     return next();
   } catch (error) {
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
+};
+
+export const isAdmin: RequestHandler = async (req, res, next) => {
+  // First check if user is authenticated
+  await new Promise((resolve, reject) => {
+    isAuthenticated(req, res, (err) => {
+      if (err) reject(err);
+      else resolve(undefined);
+    });
+  });
+
+  // Check if user has admin role
+  const user = req.user as any;
+  const userId = user.claims.sub;
+  const dbUser = await storage.getUser(userId);
+  
+  if (!dbUser || dbUser.role !== 'admin') {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+
+  next();
 };

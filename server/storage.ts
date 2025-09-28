@@ -119,8 +119,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async listUsers(filters?: { q?: string; role?: string; active?: boolean }): Promise<User[]> {
-    let query = db.select().from(users).orderBy(desc(users.createdAt));
-    
     const conditions = [];
     if (filters?.q) {
       conditions.push(
@@ -138,8 +136,13 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(users.isActive, filters.active));
     }
     
+    const query = db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
+    
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      return await query.where(and(...conditions));
     }
     
     return await query;
