@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
 import News from "@/pages/News";
+import Article from "@/pages/Article";
 import Forums from "@/pages/Forums";
 import Resources from "@/pages/Resources";
 import Podcasts from "@/pages/Podcasts";
@@ -27,6 +28,7 @@ function Router() {
         <>
           <Route path="/" component={Home} />
           <Route path="/news" component={News} />
+          <Route path="/news/:id" component={Article} />
           <Route path="/forums" component={Forums} />
           <Route path="/resources" component={Resources} />
           <Route path="/podcasts" component={Podcasts} />

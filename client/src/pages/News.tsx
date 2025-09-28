@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Heart, MessageCircle, Share, Search } from "lucide-react";
+import { Link } from "wouter";
 
 export default function News() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -115,7 +116,8 @@ export default function News() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8" data-testid="news-grid">
             {filteredNews.map((article: any) => (
-              <Card key={article.id} className="hover:shadow-lg transition-shadow duration-300" data-testid={`news-card-${article.id}`}>
+              <Link key={article.id} href={`/news/${article.id}`}>
+                <Card className="hover:shadow-lg transition-shadow duration-300 cursor-pointer" data-testid={`news-card-${article.id}`}>
                 <div className="aspect-video w-full overflow-hidden rounded-t-lg">
                   <img 
                     src={article.imageUrl || "https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"}
@@ -185,7 +187,8 @@ export default function News() {
                     )}
                   </div>
                 </CardContent>
-              </Card>
+                </Card>
+              </Link>
             ))}
           </div>
         )}

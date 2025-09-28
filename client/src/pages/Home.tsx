@@ -138,43 +138,45 @@ export default function Home() {
               </div>
               <div className="space-y-4">
                 {news?.map((article: any) => (
-                  <Card key={article.id} className="hover:shadow-md transition-shadow" data-testid={`news-item-${article.id}`}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start space-x-4">
-                        <img 
-                          src={article.imageUrl || "https://images.unsplash.com/photo-1551434678-e076c223a692?w=100&h=100&fit=crop"}
-                          alt={article.title}
-                          className="w-20 h-20 rounded-lg object-cover"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="secondary" data-testid={`news-category-${article.id}`}>
-                              {article.category}
-                            </Badge>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              {new Date(article.publishedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2" data-testid={`news-title-${article.id}`}>
-                            {article.title}
-                          </h3>
-                          <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-2 mb-3" data-testid={`news-excerpt-${article.id}`}>
-                            {article.excerpt}
-                          </p>
-                          <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                            <span className="flex items-center space-x-1">
-                              <Heart className="h-4 w-4" />
-                              <span>{article.likes || 0}</span>
-                            </span>
-                            <span className="flex items-center space-x-1">
-                              <MessageCircle className="h-4 w-4" />
-                              <span>0</span>
-                            </span>
+                  <Link key={article.id} href={`/news/${article.id}`}>
+                    <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid={`news-item-${article.id}`}>
+                      <CardContent className="p-6">
+                        <div className="flex items-start space-x-4">
+                          <img 
+                            src={article.imageUrl || "https://images.unsplash.com/photo-1551434678-e076c223a692?w=100&h=100&fit=crop"}
+                            alt={article.title}
+                            className="w-20 h-20 rounded-lg object-cover"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="secondary" data-testid={`news-category-${article.id}`}>
+                                {article.category}
+                              </Badge>
+                              <span className="text-sm text-gray-500 dark:text-gray-400">
+                                {new Date(article.publishedAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 hover:text-primary dark:hover:text-ai-teal transition-colors" data-testid={`news-title-${article.id}`}>
+                              {article.title}
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-2 mb-3" data-testid={`news-excerpt-${article.id}`}>
+                              {article.excerpt}
+                            </p>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                              <span className="flex items-center space-x-1">
+                                <Heart className="h-4 w-4" />
+                                <span>{article.likes || 0}</span>
+                              </span>
+                              <span className="flex items-center space-x-1">
+                                <MessageCircle className="h-4 w-4" />
+                                <span>0</span>
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             </section>

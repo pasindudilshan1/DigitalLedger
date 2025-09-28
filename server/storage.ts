@@ -55,6 +55,7 @@ export interface IStorage {
   
   // News operations
   getNewsArticles(category?: string, limit?: number): Promise<NewsArticle[]>;
+  getNewsArticle(id: string): Promise<NewsArticle | undefined>;
   createNewsArticle(article: InsertNewsArticle): Promise<NewsArticle>;
   likeNewsArticle(articleId: string, userId: string): Promise<void>;
   
@@ -259,6 +260,14 @@ export class DatabaseStorage implements IStorage {
     }
     
     return await query;
+  }
+
+  async getNewsArticle(id: string): Promise<NewsArticle | undefined> {
+    const [article] = await db
+      .select()
+      .from(newsArticles)
+      .where(eq(newsArticles.id, id));
+    return article;
   }
 
   async createNewsArticle(article: InsertNewsArticle): Promise<NewsArticle> {

@@ -211,6 +211,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/news/:id', async (req, res) => {
+    try {
+      const article = await storage.getNewsArticle(req.params.id);
+      if (!article) {
+        return res.status(404).json({ message: "Article not found" });
+      }
+      res.json(article);
+    } catch (error) {
+      console.error("Error fetching news article:", error);
+      res.status(500).json({ message: "Failed to fetch news article" });
+    }
+  });
+
   app.post('/api/news', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
