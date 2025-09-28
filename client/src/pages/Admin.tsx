@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -10,12 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { apiRequest } from "@/lib/queryClient";
-import { insertNewsArticleSchema, insertPodcastEpisodeSchema } from "@shared/schema";
+import { insertNewsArticleSchema, insertPodcastEpisodeSchema, insertUserInvitationSchema } from "@shared/schema";
 import { z } from "zod";
-import { Upload, FileText, Mic, Image, AudioWaveform } from "lucide-react";
+import { Upload, FileText, Mic, Image, AudioWaveform, Users, UserPlus, Shield, ShieldCheck } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
 
 // Extended schemas for form validation
@@ -28,8 +30,14 @@ const podcastFormSchema = insertPodcastEpisodeSchema.extend({
   coverImageFile: z.string().optional(),
 }).partial();
 
+const inviteFormSchema = insertUserInvitationSchema.pick({
+  email: true,
+  role: true,
+});
+
 type ArticleFormData = z.infer<typeof articleFormSchema>;
 type PodcastFormData = z.infer<typeof podcastFormSchema>;
+type InviteFormData = z.infer<typeof inviteFormSchema>;
 
 const newsCategories = [
   { value: "automation", label: "Automation" },
@@ -42,6 +50,7 @@ export default function Admin() {
   const [uploadingArticleImage, setUploadingArticleImage] = useState(false);
   const [uploadingPodcastAudio, setUploadingPodcastAudio] = useState(false);
   const [uploadingPodcastImage, setUploadingPodcastImage] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -70,6 +79,14 @@ export default function Admin() {
       duration: "",
       audioUrl: "",
       imageUrl: "",
+    },
+  });
+
+  const inviteForm = useForm<InviteFormData>({
+    resolver: zodResolver(inviteFormSchema),
+    defaultValues: {
+      email: "",
+      role: "member",
     },
   });
 
@@ -114,6 +131,102 @@ export default function Admin() {
         variant: "destructive",
       });
       console.error("Error creating podcast:", error);
+    },
+  });
+
+  // User management queries
+  const { data: users = [], isLoading: usersLoading } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+  });
+
+  const { data: invitations = [], isLoading: invitationsLoading } = useQuery<any[]>({
+    queryKey: ["/api/users/invitations"],
+  });
+
+  // User management mutations
+  const createInvitationMutation = useMutation({
+    mutationFn: async (data: InviteFormData) => {
+      return await apiRequest("/api/users/invite", "POST", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User invitation sent successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/invitations"] });
+      inviteForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to send invitation. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Error creating invitation:", error);
+    },
+  });
+
+  const changeRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      return await apiRequest(`/api/users/${userId}/role`, "PATCH", { role });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User role updated successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setSelectedUser(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user role.",
+        variant: "destructive",
+      });
+      console.error("Error updating role:", error);
+    },
+  });
+
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
+      return await apiRequest(`/api/users/${userId}/status`, "PATCH", { isActive });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User status updated successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user status.",
+        variant: "destructive",
+      });
+      console.error("Error updating status:", error);
+    },
+  });
+
+  const revokeInvitationMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      return await apiRequest(`/api/users/invitations/${invitationId}/revoke`, "POST");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Invitation revoked successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/invitations"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to revoke invitation.",
+        variant: "destructive",
+      });
+      console.error("Error revoking invitation:", error);
     },
   });
 
@@ -211,6 +324,22 @@ export default function Admin() {
     createPodcastMutation.mutate(data);
   };
 
+  const onSubmitInvite = (data: InviteFormData) => {
+    createInvitationMutation.mutate(data);
+  };
+
+  const handleRoleChange = (userId: string, role: string) => {
+    changeRoleMutation.mutate({ userId, role });
+  };
+
+  const handleStatusToggle = (userId: string, isActive: boolean) => {
+    toggleUserStatusMutation.mutate({ userId, isActive });
+  };
+
+  const handleRevokeInvitation = (invitationId: string) => {
+    revokeInvitationMutation.mutate(invitationId);
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-4xl mx-auto">
@@ -224,7 +353,7 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue="articles" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="articles" className="flex items-center gap-2" data-testid="tab-articles">
               <FileText className="h-4 w-4" />
               Articles
@@ -232,6 +361,10 @@ export default function Admin() {
             <TabsTrigger value="podcasts" className="flex items-center gap-2" data-testid="tab-podcasts">
               <Mic className="h-4 w-4" />
               Podcasts
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2" data-testid="tab-users">
+              <Users className="h-4 w-4" />
+              Users
             </TabsTrigger>
           </TabsList>
 
@@ -614,6 +747,255 @@ export default function Admin() {
                 </Form>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="users">
+            <div className="space-y-6">
+              {/* Invite Form */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2" data-testid="text-invite-form-title">
+                    <UserPlus className="h-5 w-5" />
+                    Invite New User
+                  </CardTitle>
+                  <CardDescription data-testid="text-invite-form-description">
+                    Send an invitation to add a new user to the Digital Ledger community.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...inviteForm}>
+                    <form onSubmit={inviteForm.handleSubmit(onSubmitInvite)} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={inviteForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email Address</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="email" 
+                                  placeholder="user@example.com" 
+                                  {...field} 
+                                  data-testid="input-invite-email"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={inviteForm.control}
+                          name="role"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Role</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-invite-role">
+                                    <SelectValue placeholder="Select a role" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="member">Member</SelectItem>
+                                  <SelectItem value="moderator">Moderator</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="flex justify-end">
+                        <Button 
+                          type="submit" 
+                          disabled={createInvitationMutation.isPending}
+                          className="flex items-center gap-2"
+                          data-testid="button-send-invite"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                          {createInvitationMutation.isPending ? "Sending..." : "Send Invitation"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+
+              {/* Current Users */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2" data-testid="text-users-table-title">
+                    <Users className="h-5 w-5" />
+                    Current Users
+                  </CardTitle>
+                  <CardDescription data-testid="text-users-table-description">
+                    Manage existing users, their roles, and account status.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {usersLoading ? (
+                    <div className="text-center py-4" data-testid="loading-users">Loading users...</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((user: any) => (
+                          <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
+                            <TableCell data-testid={`text-user-name-${user.id}`}>
+                              {user.firstName} {user.lastName}
+                            </TableCell>
+                            <TableCell data-testid={`text-user-email-${user.id}`}>
+                              {user.email}
+                            </TableCell>
+                            <TableCell data-testid={`text-user-role-${user.id}`}>
+                              <Badge variant={user.role === 'admin' ? 'default' : user.role === 'moderator' ? 'secondary' : 'outline'}>
+                                {user.role}
+                              </Badge>
+                            </TableCell>
+                            <TableCell data-testid={`text-user-status-${user.id}`}>
+                              <Badge variant={user.isActive ? 'default' : 'destructive'}>
+                                {user.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      data-testid={`button-change-role-${user.id}`}
+                                    >
+                                      <Shield className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Change User Role</DialogTitle>
+                                      <DialogDescription>
+                                        Update the role for {user.firstName} {user.lastName} ({user.email})
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <Select 
+                                        defaultValue={user.role}
+                                        onValueChange={(role) => handleRoleChange(user.id, role)}
+                                      >
+                                        <SelectTrigger data-testid={`select-user-role-${user.id}`}>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="member">Member</SelectItem>
+                                          <SelectItem value="moderator">Moderator</SelectItem>
+                                          <SelectItem value="admin">Admin</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                                
+                                <Button
+                                  variant={user.isActive ? "destructive" : "default"}
+                                  size="sm"
+                                  onClick={() => handleStatusToggle(user.id, !user.isActive)}
+                                  disabled={toggleUserStatusMutation.isPending}
+                                  data-testid={`button-toggle-status-${user.id}`}
+                                >
+                                  {user.isActive ? 'Deactivate' : 'Activate'}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {users.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4" data-testid="empty-users">
+                              No users found.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Pending Invitations */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2" data-testid="text-invitations-table-title">
+                    <UserPlus className="h-5 w-5" />
+                    Pending Invitations
+                  </CardTitle>
+                  <CardDescription data-testid="text-invitations-table-description">
+                    View and manage pending user invitations.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {invitationsLoading ? (
+                    <div className="text-center py-4" data-testid="loading-invitations">Loading invitations...</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Invited On</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invitations.map((invitation: any) => (
+                          <TableRow key={invitation.id} data-testid={`row-invitation-${invitation.id}`}>
+                            <TableCell data-testid={`text-invitation-email-${invitation.id}`}>
+                              {invitation.email}
+                            </TableCell>
+                            <TableCell data-testid={`text-invitation-role-${invitation.id}`}>
+                              <Badge variant={invitation.role === 'admin' ? 'default' : invitation.role === 'moderator' ? 'secondary' : 'outline'}>
+                                {invitation.role}
+                              </Badge>
+                            </TableCell>
+                            <TableCell data-testid={`text-invitation-date-${invitation.id}`}>
+                              {new Date(invitation.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleRevokeInvitation(invitation.id)}
+                                disabled={revokeInvitationMutation.isPending}
+                                data-testid={`button-revoke-invitation-${invitation.id}`}
+                              >
+                                Revoke
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {invitations.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-4" data-testid="empty-invitations">
+                              No pending invitations.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

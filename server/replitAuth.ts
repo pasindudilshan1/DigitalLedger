@@ -182,12 +182,22 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
 export const isAdmin: RequestHandler = async (req, res, next) => {
   // First check if user is authenticated
-  await new Promise((resolve, reject) => {
-    isAuthenticated(req, res, (err) => {
-      if (err) reject(err);
-      else resolve(undefined);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      isAuthenticated(req, res, (err) => {
+        if (res.headersSent) {
+          reject(new Error("Authentication failed"));
+          return;
+        }
+        if (err) reject(err);
+        else resolve();
+      });
     });
-  });
+  } catch (error) {
+    // If headers are already sent, authentication middleware handled the response
+    if (res.headersSent) return;
+    return res.status(401).json({ message: "Authentication required" });
+  }
 
   // Check if user has admin role
   const user = req.user as any;
