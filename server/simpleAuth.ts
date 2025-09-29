@@ -64,10 +64,18 @@ export function setupAuth(app: Express, storage: IStorage) {
 
       // Set session
       req.session.userId = user.id;
-
-      // Return user without password
-      const { passwordHash: _, ...userResponse } = user;
-      res.status(201).json(userResponse);
+      
+      // Save session explicitly
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Internal server error" });
+        }
+        
+        // Return user without password
+        const { passwordHash: _, ...userResponse } = user;
+        res.status(201).json(userResponse);
+      });
     } catch (error) {
       console.error("Register error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -110,10 +118,18 @@ export function setupAuth(app: Express, storage: IStorage) {
 
         // Set session
         req.session.userId = user.id;
-
-        // Return user without password
-        const { passwordHash: _, ...userResponse } = user;
-        res.json(userResponse);
+        
+        // Save session explicitly
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ message: "Internal server error" });
+          }
+          
+          // Return user without password
+          const { passwordHash: _, ...userResponse } = user;
+          res.json(userResponse);
+        });
       });
     } catch (error) {
       console.error("Login error:", error);
