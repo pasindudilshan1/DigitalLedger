@@ -13,11 +13,12 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDes
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Calendar, ExternalLink, Heart, MessageCircle, Share2, Edit, Trash2, Archive } from "lucide-react";
+import { ArrowLeft, Calendar, ExternalLink, Heart, MessageCircle, Share2, Edit, Trash2, Archive, Upload } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { insertNewsArticleSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 type ArticleFormData = {
   title: string;
@@ -475,15 +476,87 @@ export default function Article() {
                         name="imageUrl"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Image URL (Optional)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="https://example.com/image.jpg" 
-                                {...field}
-                                value={field.value || ''}
-                                data-testid="input-edit-image"
-                              />
-                            </FormControl>
+                            <FormLabel>Article Image (Optional)</FormLabel>
+                            <div className="space-y-4">
+                              {/* File Upload Option */}
+                              <div>
+                                <ObjectUploader
+                                  maxNumberOfFiles={1}
+                                  maxFileSize={5242880} // 5MB limit for images
+                                  onGetUploadParameters={async () => {
+                                    const response = await apiRequest("/api/objects/upload", "POST");
+                                    return {
+                                      method: "PUT" as const,
+                                      url: response.uploadURL,
+                                    };
+                                  }}
+                                  onComplete={async (result) => {
+                                    if (result.successful && result.successful.length > 0) {
+                                      const uploadedFile = result.successful[0];
+                                      const imageURL = uploadedFile.response?.body?.url;
+                                      
+                                      if (imageURL) {
+                                        try {
+                                          // Set ACL policy for the uploaded image
+                                          const aclResponse = await apiRequest("/api/articles/images", "PUT", {
+                                            imageURL: imageURL
+                                          });
+                                          
+                                          // Update the form field with the public URL
+                                          const publicURL = `/public-objects${aclResponse.objectPath}`;
+                                          field.onChange(publicURL);
+                                          
+                                          toast({
+                                            title: "Success",
+                                            description: "Image uploaded successfully!",
+                                          });
+                                        } catch (error) {
+                                          console.error("Error setting image ACL:", error);
+                                          toast({
+                                            title: "Error",
+                                            description: "Failed to process uploaded image",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }
+                                    }
+                                  }}
+                                  buttonClassName="w-full"
+                                >
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Upload Image
+                                </ObjectUploader>
+                              </div>
+
+                              {/* URL Input Option */}
+                              <div className="relative">
+                                <p className="text-sm text-gray-500 mb-2">Or enter image URL:</p>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="https://example.com/image.jpg" 
+                                    {...field}
+                                    value={field.value || ''}
+                                    data-testid="input-edit-image"
+                                  />
+                                </FormControl>
+                              </div>
+
+                              {/* Current Image Preview */}
+                              {field.value && (
+                                <div className="border rounded-lg p-4">
+                                  <p className="text-sm text-gray-500 mb-2">Current Image:</p>
+                                  <img 
+                                    src={field.value} 
+                                    alt="Article preview" 
+                                    className="w-full h-32 object-cover rounded-md"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                  <p className="text-xs text-gray-400 mt-1 break-all">{field.value}</p>
+                                </div>
+                              )}
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
