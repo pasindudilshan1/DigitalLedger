@@ -62,6 +62,7 @@ export const newsArticles = pgTable("news_articles", {
   content: text("content").notNull(),
   excerpt: text("excerpt"),
   imageUrl: varchar("image_url"),
+  thumbnailUrl: varchar("thumbnail_url"),
   sourceUrl: varchar("source_url"),
   sourceName: varchar("source_name"),
   category: varchar("category").notNull(), // automation, fraud-detection, regulatory, generative-ai
