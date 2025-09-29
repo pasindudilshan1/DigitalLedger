@@ -25,7 +25,6 @@ type ArticleFormData = {
   content: string;
   excerpt?: string;
   imageUrl?: string;
-  thumbnailUrl?: string;
   sourceUrl?: string;
   sourceName?: string;
   category: string;
@@ -44,7 +43,6 @@ export default function Article() {
       content: true,
       excerpt: true,
       imageUrl: true,
-      thumbnailUrl: true,
       sourceUrl: true,
       sourceName: true,
       category: true,
@@ -54,7 +52,6 @@ export default function Article() {
       content: "",
       excerpt: "",
       imageUrl: "",
-      thumbnailUrl: "",
       sourceUrl: "",
       sourceName: "",
       category: "",
@@ -146,7 +143,6 @@ export default function Article() {
         content: article.content || "",
         excerpt: article.excerpt || "",
         imageUrl: article.imageUrl || "",
-        thumbnailUrl: article.thumbnailUrl || "",
         sourceUrl: article.sourceUrl || "",
         sourceName: article.sourceName || "",
         category: article.category || "",
@@ -478,16 +474,15 @@ export default function Article() {
                       />
                     </div>
 
-                    {/* Image Upload Sections */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Main Article Image */}
-                      <FormField
-                        control={articleForm.control}
-                        name="imageUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Main Article Image</FormLabel>
-                            <div className="space-y-4">
+                    <FormField
+                      control={articleForm.control}
+                      name="imageUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Article Image (Optional)</FormLabel>
+                          <div className="space-y-4">
+                            {/* File Upload Option */}
+                            <div>
                               <ObjectUploader
                                 maxNumberOfFiles={1}
                                 maxFileSize={5242880} // 5MB limit for images
@@ -505,22 +500,24 @@ export default function Article() {
                                     
                                     if (imageURL) {
                                       try {
+                                        // Set ACL policy for the uploaded image
                                         const aclResponse = await apiRequest("/api/articles/images", "PUT", {
                                           imageURL: imageURL
                                         });
                                         
+                                        // Update the form field with the public URL
                                         const publicURL = `/public-objects${aclResponse.objectPath}`;
                                         field.onChange(publicURL);
                                         
                                         toast({
                                           title: "Success",
-                                          description: "Main image uploaded successfully!",
+                                          description: "Image uploaded successfully!",
                                         });
                                       } catch (error) {
                                         console.error("Error setting image ACL:", error);
                                         toast({
                                           title: "Error",
-                                          description: "Failed to process main image",
+                                          description: "Failed to process uploaded image",
                                           variant: "destructive",
                                         });
                                       }
@@ -530,126 +527,43 @@ export default function Article() {
                                 buttonClassName="w-full"
                               >
                                 <Upload className="h-4 w-4 mr-2" />
-                                Upload Main Image
+                                Upload Image
                               </ObjectUploader>
-
-                              <div className="relative">
-                                <p className="text-sm text-gray-500 mb-2">Or enter URL:</p>
-                                <FormControl>
-                                  <Input 
-                                    placeholder="https://example.com/main-image.jpg" 
-                                    {...field}
-                                    value={field.value || ''}
-                                    data-testid="input-edit-main-image"
-                                  />
-                                </FormControl>
-                              </div>
-
-                              {field.value && (
-                                <div className="border rounded-lg p-4">
-                                  <p className="text-sm text-gray-500 mb-2">Current Main Image:</p>
-                                  <img 
-                                    src={field.value} 
-                                    alt="Main article preview" 
-                                    className="w-full h-32 object-cover rounded-md"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = 'none';
-                                    }}
-                                  />
-                                  <p className="text-xs text-gray-400 mt-1 break-all">{field.value}</p>
-                                </div>
-                              )}
                             </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
 
-                      {/* Thumbnail Image */}
-                      <FormField
-                        control={articleForm.control}
-                        name="thumbnailUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Thumbnail Image</FormLabel>
-                            <div className="space-y-4">
-                              <ObjectUploader
-                                maxNumberOfFiles={1}
-                                maxFileSize={2097152} // 2MB limit for thumbnails
-                                onGetUploadParameters={async () => {
-                                  const response = await apiRequest("/api/objects/upload", "POST");
-                                  return {
-                                    method: "PUT" as const,
-                                    url: response.uploadURL,
-                                  };
-                                }}
-                                onComplete={async (result) => {
-                                  if (result.successful && result.successful.length > 0) {
-                                    const uploadedFile = result.successful[0];
-                                    const imageURL = uploadedFile.response?.body?.url;
-                                    
-                                    if (imageURL) {
-                                      try {
-                                        const aclResponse = await apiRequest("/api/articles/images", "PUT", {
-                                          imageURL: imageURL
-                                        });
-                                        
-                                        const publicURL = `/public-objects${aclResponse.objectPath}`;
-                                        field.onChange(publicURL);
-                                        
-                                        toast({
-                                          title: "Success",
-                                          description: "Thumbnail uploaded successfully!",
-                                        });
-                                      } catch (error) {
-                                        console.error("Error setting thumbnail ACL:", error);
-                                        toast({
-                                          title: "Error",
-                                          description: "Failed to process thumbnail",
-                                          variant: "destructive",
-                                        });
-                                      }
-                                    }
-                                  }
-                                }}
-                                buttonClassName="w-full"
-                              >
-                                <Upload className="h-4 w-4 mr-2" />
-                                Upload Thumbnail
-                              </ObjectUploader>
-
-                              <div className="relative">
-                                <p className="text-sm text-gray-500 mb-2">Or enter URL:</p>
-                                <FormControl>
-                                  <Input 
-                                    placeholder="https://example.com/thumbnail.jpg" 
-                                    {...field}
-                                    value={field.value || ''}
-                                    data-testid="input-edit-thumbnail"
-                                  />
-                                </FormControl>
-                              </div>
-
-                              {field.value && (
-                                <div className="border rounded-lg p-4">
-                                  <p className="text-sm text-gray-500 mb-2">Current Thumbnail:</p>
-                                  <img 
-                                    src={field.value} 
-                                    alt="Thumbnail preview" 
-                                    className="w-full h-20 object-cover rounded-md"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = 'none';
-                                    }}
-                                  />
-                                  <p className="text-xs text-gray-400 mt-1 break-all">{field.value}</p>
-                                </div>
-                              )}
+                            {/* URL Input Option */}
+                            <div className="relative">
+                              <p className="text-sm text-gray-500 mb-2">Or enter image URL:</p>
+                              <FormControl>
+                                <Input 
+                                  placeholder="https://example.com/image.jpg" 
+                                  {...field}
+                                  value={field.value || ''}
+                                  data-testid="input-edit-image"
+                                />
+                              </FormControl>
                             </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+
+                            {/* Current Image Preview */}
+                            {field.value && (
+                              <div className="border rounded-lg p-4">
+                                <p className="text-sm text-gray-500 mb-2">Current Image:</p>
+                                <img 
+                                  src={field.value} 
+                                  alt="Article preview" 
+                                  className="w-full h-32 object-cover rounded-md"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                                <p className="text-xs text-gray-400 mt-1 break-all">{field.value}</p>
+                              </div>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
