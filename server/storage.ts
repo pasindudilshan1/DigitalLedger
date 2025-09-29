@@ -59,6 +59,8 @@ export interface IStorage {
   getNewsArticle(id: string): Promise<NewsArticle | undefined>;
   createNewsArticle(article: InsertNewsArticle): Promise<NewsArticle>;
   updateNewsArticle(articleId: string, updates: Partial<InsertNewsArticle>): Promise<NewsArticle | undefined>;
+  deleteNewsArticle(articleId: string): Promise<boolean>;
+  archiveNewsArticle(articleId: string): Promise<NewsArticle | undefined>;
   likeNewsArticle(articleId: string, userId: string): Promise<void>;
   
   // Forum operations
@@ -289,6 +291,22 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(newsArticles)
       .set(updates)
+      .where(eq(newsArticles.id, articleId))
+      .returning();
+    return updated;
+  }
+
+  async deleteNewsArticle(articleId: string): Promise<boolean> {
+    const result = await db
+      .delete(newsArticles)
+      .where(eq(newsArticles.id, articleId));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async archiveNewsArticle(articleId: string): Promise<NewsArticle | undefined> {
+    const [updated] = await db
+      .update(newsArticles)
+      .set({ isArchived: true })
       .where(eq(newsArticles.id, articleId))
       .returning();
     return updated;

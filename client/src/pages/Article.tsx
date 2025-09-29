@@ -1,4 +1,4 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -8,11 +8,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Calendar, ExternalLink, Heart, MessageCircle, Share2, Edit } from "lucide-react";
+import { ArrowLeft, Calendar, ExternalLink, Heart, MessageCircle, Share2, Edit, Trash2, Archive } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { insertNewsArticleSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +34,7 @@ export default function Article() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [location, setLocation] = useLocation();
 
   const articleForm = useForm<ArticleFormData>({
     resolver: zodResolver(insertNewsArticleSchema.pick({
@@ -84,6 +86,50 @@ export default function Article() {
       toast({
         title: "Update failed",
         description: "Failed to update the article. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete article mutation
+  const deleteArticleMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest(`/api/news/${id}`, "DELETE");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+      toast({
+        title: "Success",
+        description: "Article deleted successfully",
+      });
+      setLocation("/news"); // Redirect to news page
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete article",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Archive article mutation
+  const archiveArticleMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest(`/api/news/${id}/archive`, "PATCH");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/news", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+      toast({
+        title: "Success",
+        description: "Article archived successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to archive article",
         variant: "destructive",
       });
     },
@@ -179,15 +225,62 @@ export default function Article() {
             </Link>
             
             {(user as any)?.role === 'admin' && (
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2"
-                onClick={handleEditArticle}
-                data-testid="button-edit-article"
-              >
-                <Edit className="h-4 w-4" />
-                Edit Article
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={handleEditArticle}
+                  data-testid="button-edit-article"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Article
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={() => archiveArticleMutation.mutate()}
+                  disabled={archiveArticleMutation.isPending}
+                  data-testid="button-archive-article"
+                >
+                  <Archive className="h-4 w-4" />
+                  {archiveArticleMutation.isPending ? "Archiving..." : "Archive"}
+                </Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="destructive" 
+                      className="flex items-center gap-2"
+                      data-testid="button-delete-article"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Article</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this article? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel data-testid="button-cancel-delete">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteArticleMutation.mutate()}
+                        disabled={deleteArticleMutation.isPending}
+                        className="bg-red-600 hover:bg-red-700"
+                        data-testid="button-confirm-delete"
+                      >
+                        {deleteArticleMutation.isPending ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             )}
           </div>
           

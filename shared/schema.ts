@@ -68,6 +68,7 @@ export const newsArticles = pgTable("news_articles", {
   authorId: varchar("author_id").references(() => users.id),
   publishedAt: timestamp("published_at").defaultNow(),
   likes: integer("likes").default(0),
+  isArchived: boolean("is_archived").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

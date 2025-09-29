@@ -266,6 +266,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/news/:id', isAdmin, async (req: any, res) => {
+    try {
+      const articleId = req.params.id;
+      const deleted = await storage.deleteNewsArticle(articleId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Article not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting news article:", error);
+      res.status(500).json({ message: "Failed to delete news article" });
+    }
+  });
+
+  app.patch('/api/news/:id/archive', isAdmin, async (req: any, res) => {
+    try {
+      const articleId = req.params.id;
+      const archivedArticle = await storage.archiveNewsArticle(articleId);
+      if (!archivedArticle) {
+        return res.status(404).json({ message: "Article not found" });
+      }
+      res.json(archivedArticle);
+    } catch (error) {
+      console.error("Error archiving news article:", error);
+      res.status(500).json({ message: "Failed to archive news article" });
+    }
+  });
+
   // Forum routes
   app.get('/api/forum/categories', async (req, res) => {
     try {
