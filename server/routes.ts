@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAdmin } from "./simpleAuth";
+import { getSession } from "./replitAuth"; // Keep session config
 import {
   ObjectStorageService,
   ObjectNotFoundError,
@@ -19,20 +20,19 @@ import {
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
-
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
+  // Session middleware
+  app.use(getSession());
+  
+  // Storage middleware - make storage accessible to auth middleware
+  app.use((req: any, res, next) => {
+    req.storage = storage;
+    next();
   });
+  
+  // Auth middleware
+  setupAuth(app, storage);
+
+  // Auth route is now handled in simpleAuth.ts
 
   // User management routes (admin only)
   app.get('/api/users', isAdmin, async (req: any, res) => {
@@ -53,7 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/users/invite', isAdmin, async (req: any, res) => {
     try {
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       const invitationData = insertUserInvitationSchema.parse({
         ...req.body,
         invitedBy: adminUserId,
@@ -71,7 +71,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.params.id;
       const { role } = req.body;
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       
       // Prevent demoting the last admin
       if (role !== 'admin') {
@@ -101,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.params.id;
       const { isActive } = req.body;
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       
       // Prevent self-deactivation if last admin
       if (!isActive && userId === adminUserId) {
@@ -155,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/users/:id', isAdmin, async (req: any, res) => {
     try {
       const userId = req.params.id;
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       const updates = insertUserSchema.partial().parse(req.body);
       
       // Prevent self-demotion if last admin
@@ -177,7 +177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/users/:id', isAdmin, async (req: any, res) => {
     try {
       const userId = req.params.id;
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       
       // Prevent self-deletion if last admin
       const user = await storage.getUser(userId);
@@ -226,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/news', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const articleData = insertNewsArticleSchema.parse({
         ...req.body,
         authorId: userId,
@@ -256,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/news/:id/like', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const articleId = req.params.id;
       await storage.likeNewsArticle(articleId, userId);
       res.json({ success: true });
@@ -317,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/forum/discussions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const discussionData = insertForumDiscussionSchema.parse({
         ...req.body,
         authorId: userId,
@@ -332,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/forum/discussions/:id/like', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const discussionId = req.params.id;
       await storage.likeForumDiscussion(discussionId, userId);
       res.json({ success: true });
@@ -344,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/forum/replies', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const replyData = insertForumReplySchema.parse({
         ...req.body,
         authorId: userId,
@@ -359,7 +359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/forum/replies/:id/like', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const replyId = req.params.id;
       await storage.likeForumReply(replyId, userId);
       res.json({ success: true });
@@ -393,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/resources', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const resourceData = insertResourceSchema.parse({
         ...req.body,
         authorId: userId,
@@ -454,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/polls', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const pollData = insertPollSchema.parse({
         ...req.body,
         createdBy: userId,
@@ -469,7 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/polls/:id/vote', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const pollId = req.params.id;
       const { optionIndex } = req.body;
       await storage.votePoll(pollId, optionIndex, userId);
