@@ -315,16 +315,18 @@ export default function Article() {
                 )}
               </div>
 
-              {article.imageUrl && (
-                <div className="mb-8">
-                  <img 
-                    src={article.imageUrl}
-                    alt={article.title}
-                    className="w-full h-96 object-cover rounded-lg shadow-lg"
-                    data-testid="article-image"
-                  />
-                </div>
-              )}
+              <div className="mb-8">
+                <img 
+                  src={article.imageUrl || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop&q=80"}
+                  alt={article.title}
+                  className="w-full h-96 object-cover rounded-lg shadow-lg"
+                  data-testid="article-image"
+                  onError={(e) => {
+                    // Fallback to default image if the uploaded image fails to load
+                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop&q=80";
+                  }}
+                />
+              </div>
 
               <div className="prose prose-lg max-w-none dark:prose-invert mb-8" data-testid="article-content">
                 {article.content ? (
