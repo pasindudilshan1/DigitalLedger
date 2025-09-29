@@ -1,6 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { useTheme } from "./ThemeProvider";
 import { useAuth } from "@/hooks/useAuth";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,8 +20,24 @@ import { cn } from "@/lib/utils";
 export function Navigation() {
   const { theme, toggleTheme } = useTheme();
   const { user, isAuthenticated } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/auth/logout", "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      setLocation("/"); // Redirect to home page
+    },
+  });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   const navigation = [
     { name: "News", href: "/news" },
@@ -100,27 +118,28 @@ export function Navigation() {
             {isAuthenticated && user ? (
               <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8" data-testid="avatar-user">
-                  <AvatarImage src={user.profileImageUrl || ""} />
+                  <AvatarImage src={(user as any)?.profileImageUrl || ""} />
                   <AvatarFallback className="bg-gradient-to-br from-accent to-primary text-white text-sm font-semibold">
-                    {user.firstName?.[0] || "U"}{user.lastName?.[0] || ""}
+                    {(user as any)?.firstName?.[0] || "U"}{(user as any)?.lastName?.[0] || ""}
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden sm:block text-sm font-medium" data-testid="text-username">
-                  {user.firstName} {user.lastName}
+                  {(user as any)?.firstName} {(user as any)?.lastName}
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.location.href = "/api/logout"}
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isPending}
                   data-testid="button-logout"
                   className="hidden sm:inline-flex"
                 >
-                  Logout
+                  {logoutMutation.isPending ? "Logging out..." : "Logout"}
                 </Button>
               </div>
             ) : (
               <Button
-                onClick={() => window.location.href = "/api/login"}
+                onClick={() => setLocation("/login")}
                 data-testid="button-login"
                 className="bg-primary hover:bg-blue-700 text-white"
               >
@@ -179,11 +198,12 @@ export function Navigation() {
               {isAuthenticated && user && (
                 <Button
                   variant="ghost"
-                  onClick={() => window.location.href = "/api/logout"}
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isPending}
                   data-testid="button-mobile-logout"
                   className="mx-3 justify-start"
                 >
-                  Logout
+                  {logoutMutation.isPending ? "Logging out..." : "Logout"}
                 </Button>
               )}
             </div>
