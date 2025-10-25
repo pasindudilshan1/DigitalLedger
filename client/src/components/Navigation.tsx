@@ -39,14 +39,18 @@ export function Navigation() {
     logoutMutation.mutate();
   };
 
-  const navigation = [
+  const baseNavigation = [
     { name: "News", href: "/news" },
     { name: "Forums", href: "/forums" },
     { name: "Resources", href: "/resources" },
     { name: "Podcasts", href: "/podcasts" },
     { name: "Community", href: "/community" },
-    { name: "Admin", href: "/admin" },
   ];
+
+  // Only show Admin link if user is authenticated and is an admin
+  const navigation = isAuthenticated && (user as any)?.role === "admin"
+    ? [...baseNavigation, { name: "Admin", href: "/admin" }]
+    : baseNavigation;
 
   const isActive = (href: string) => location === href;
 
