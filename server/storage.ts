@@ -348,19 +348,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getForumDiscussions(categoryId?: string, limit = 20): Promise<(ForumDiscussion & { author: User; category: ForumCategory })[]> {
-    const query = db
+    let query = db
       .select()
       .from(forumDiscussions)
       .leftJoin(users, eq(forumDiscussions.authorId, users.id))
       .leftJoin(forumCategories, eq(forumDiscussions.categoryId, forumCategories.id))
-      .orderBy(desc(forumDiscussions.lastReplyAt), desc(forumDiscussions.createdAt))
-      .limit(limit);
+      .orderBy(desc(forumDiscussions.lastReplyAt), desc(forumDiscussions.createdAt));
     
     if (categoryId) {
-      query.where(eq(forumDiscussions.categoryId, categoryId));
+      query = query.where(eq(forumDiscussions.categoryId, categoryId)) as any;
     }
     
-    const results = await query;
+    const results = await query.limit(limit);
     return results.map(row => ({
       ...row.forum_discussions,
       author: row.users!,
