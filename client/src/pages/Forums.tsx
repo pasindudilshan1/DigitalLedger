@@ -1,6 +1,7 @@
 import { Layout } from "@/components/Layout";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 export default function Forums() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
@@ -363,8 +365,13 @@ export default function Forums() {
                 {filteredDiscussions.map((discussion: any) => (
                   <div 
                     key={discussion.id} 
-                    className="p-6 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="p-6 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                     data-testid={`discussion-item-${discussion.id}`}
+                    onClick={(e) => {
+                      // Don't navigate if clicking edit/delete buttons
+                      if ((e.target as HTMLElement).closest('button')) return;
+                      setLocation(`/forums/${discussion.id}`);
+                    }}
                   >
                     <div className="flex items-start space-x-4">
                       <Avatar className="w-12 h-12">
@@ -377,7 +384,7 @@ export default function Forums() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-3">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white line-clamp-1" data-testid={`discussion-title-${discussion.id}`}>
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white line-clamp-1 hover:text-primary transition-colors" data-testid={`discussion-title-${discussion.id}`}>
                               {discussion.title}
                             </h3>
                             {discussion.isPinned && (

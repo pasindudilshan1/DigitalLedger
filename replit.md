@@ -32,6 +32,7 @@ The application now includes **automatic seeding on startup**:
 - 10 podcast episodes (Episodes 3-12)
 - 12 educational resources
 - 3 forum categories
+- **9 forum discussions with 21 replies** (NEW!)
 
 **Production Database:** Will auto-seed on first deployment
 
@@ -41,6 +42,17 @@ The application now includes **automatic seeding on startup**:
 - **10 Podcast Episodes**: Full metadata, audio URLs, sorted by date
 - **12 Educational Resources**: Guides, videos, templates, tools with ratings
 - **3 Forum Categories**: AI Implementation, Regulatory Compliance, Learning & Development
+- **9 Forum Discussions**: Real AI/accounting topics with threaded conversations
+  - "Best practices for implementing GPT-4 in tax preparation workflows" (8 replies, pinned)
+  - "Machine Learning model accuracy for audit sampling?" (12 replies)
+  - "RPA vs. AI for AP automation?" (6 replies)
+  - "SEC's new AI disclosure requirements" (15 replies, pinned)
+  - "PCAOB guidance on AI and auditor independence" (9 replies)
+  - "International AI regulations: GDPR vs. US" (7 replies)
+  - "Recommended certifications for AI in Accounting?" (14 replies)
+  - "Career pivot: Traditional auditor to AI specialist?" (11 replies)
+  - "Python for accountants: Best resources?" (10 replies)
+- **21 Forum Replies**: Realistic conversations with technical details, tool recommendations, and professional insights from community members
 
 ### Manual Rebuild Option
 The admin panel still includes a **"Rebuild Database"** button (orange border) for manual control:

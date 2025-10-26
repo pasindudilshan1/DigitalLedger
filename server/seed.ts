@@ -688,6 +688,295 @@ export async function seedDatabase(force: boolean = false) {
     await db.insert(forumCategories).values(categoriesData);
     console.log("✓ Seeded forum categories");
 
+    // Get created users and categories for foreign keys
+    const seededUsers = await db.select().from(users).limit(15);
+    const seededCategories = await db.select().from(forumCategories);
+
+    // Create forum discussions
+    const discussionsData = [
+      {
+        title: "Best practices for implementing GPT-4 in tax preparation workflows",
+        content: "Our firm is considering integrating GPT-4 into our tax preparation process, specifically for document analysis and initial review. Has anyone successfully implemented this? What challenges did you face, and what safeguards did you put in place to ensure accuracy?\n\nI'm particularly interested in:\n- How you handle client data privacy\n- What types of tasks you've automated\n- How you validate AI-generated outputs\n- Any compliance considerations we should be aware of\n\nWould love to hear real-world experiences!",
+        categoryId: seededCategories[0]?.id,
+        authorId: seededUsers[0]?.id,
+        isPinned: true,
+        replyCount: 8,
+        likes: 24,
+        lastReplyAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+      {
+        title: "Machine Learning model accuracy: How much is enough for audit sampling?",
+        content: "I've been working on a ML model for selecting audit samples based on risk factors. Currently achieving 87% accuracy in identifying high-risk transactions. Is this acceptable for production use, or should I be aiming higher?\n\nContext: Mid-sized manufacturing clients, testing population of ~50K transactions annually.\n\nWhat accuracy rates are others seeing in similar applications?",
+        categoryId: seededCategories[0]?.id,
+        authorId: seededUsers[1]?.id,
+        replyCount: 12,
+        likes: 31,
+        lastReplyAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      },
+      {
+        title: "RPA vs. AI: When to use which for AP automation?",
+        content: "I'm mapping out an automation strategy for our accounts payable department. Trying to decide between traditional RPA tools and newer AI-powered solutions.\n\nFrom what I understand:\n- RPA is great for structured, repetitive tasks\n- AI handles unstructured data and decision-making better\n\nBut what about the cost-benefit analysis? AI seems more expensive upfront. Has anyone done a comparison?",
+        categoryId: seededCategories[0]?.id,
+        authorId: seededUsers[2]?.id,
+        replyCount: 6,
+        likes: 18,
+        lastReplyAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        title: "SEC's new AI disclosure requirements - Implementation timeline?",
+        content: "With the SEC's proposed rules on AI disclosure in financial statements, I'm trying to get ahead of compliance. The rules seem to require disclosure of:\n\n1. Which AI systems are used in financial reporting\n2. Level of human oversight\n3. Risk assessments\n\nHas anyone started documenting their AI usage for this purpose? What format are you using?",
+        categoryId: seededCategories[1]?.id,
+        authorId: seededUsers[3]?.id,
+        isPinned: true,
+        replyCount: 15,
+        likes: 42,
+        lastReplyAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      },
+      {
+        title: "PCAOB guidance on AI and auditor independence",
+        content: "The recent PCAOB guidance has me concerned about our firm's AI tools. Specifically, there's a section about ensuring the AI doesn't compromise auditor independence.\n\nKey concern: If we use a client's data to train our AI models, does that create an independence issue?\n\nAnyone else navigating this?",
+        categoryId: seededCategories[1]?.id,
+        authorId: seededUsers[4]?.id,
+        replyCount: 9,
+        likes: 27,
+        lastReplyAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      },
+      {
+        title: "International AI regulations: GDPR vs. US approach",
+        content: "Our firm has clients in both the EU and US. The regulatory approaches to AI seem very different. GDPR has strict requirements around algorithmic decision-making and data processing.\n\nHow are you handling cross-border compliance? Do you use different AI tools for EU vs. US clients?",
+        categoryId: seededCategories[1]?.id,
+        authorId: seededUsers[5]?.id,
+        replyCount: 7,
+        likes: 19,
+        lastReplyAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      },
+      {
+        title: "Recommended certifications for AI in Accounting?",
+        content: "Looking to upskill my team in AI technologies. What certifications or training programs have you found most valuable?\n\nI've seen:\n- AI+ Accounting certification\n- Various Coursera/edX courses\n- Vendor-specific training (UiPath, Alteryx, etc.)\n\nWhat's actually worth the investment?",
+        categoryId: seededCategories[2]?.id,
+        authorId: seededUsers[6]?.id,
+        isPinned: false,
+        replyCount: 14,
+        likes: 38,
+        lastReplyAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+      },
+      {
+        title: "Career pivot: Traditional auditor to AI specialist?",
+        content: "I've been a financial statement auditor for 8 years. Seeing the writing on the wall with AI automation, I want to pivot into an AI-focused role.\n\nWhat skills should I prioritize learning? Python? Statistics? Machine learning?\n\nAlso, is it realistic to make this transition, or should I just focus on becoming an expert in using AI tools rather than building them?",
+        categoryId: seededCategories[2]?.id,
+        authorId: seededUsers[7]?.id,
+        replyCount: 11,
+        likes: 33,
+        lastReplyAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+      },
+      {
+        title: "Python for accountants: Best resources for beginners?",
+        content: "Complete Python newbie here. I understand it's becoming essential for data analysis and AI implementation in accounting.\n\nWhat learning resources do you recommend for someone with zero programming background? Prefer practical, accounting-focused tutorials over general programming courses.\n\nAlso, how long did it take you to become proficient enough to use it in your daily work?",
+        categoryId: seededCategories[2]?.id,
+        authorId: seededUsers[8]?.id,
+        replyCount: 10,
+        likes: 29,
+        lastReplyAt: new Date(Date.now() - 7 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      },
+    ];
+
+    const insertedDiscussions = await db.insert(forumDiscussions).values(discussionsData).returning();
+    console.log("✓ Seeded forum discussions");
+
+    // Create forum replies
+    const repliesData = [
+      // Replies for first discussion (GPT-4 in tax prep)
+      {
+        content: "We implemented GPT-4 last quarter for initial document review. Key lesson: ALWAYS have human verification. We use it to flag potential issues and summarize complex documents, but a CPA reviews every output.\n\nFor privacy, we use Azure OpenAI with our own dedicated instance - no data leaves our environment.",
+        discussionId: insertedDiscussions[0]?.id,
+        authorId: seededUsers[1]?.id,
+        likes: 12,
+        createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "This is exactly what we're looking for! Do you mind sharing which document types you've had the most success with? I'm thinking W-2s, 1099s, and K-1s would be good candidates.",
+        discussionId: insertedDiscussions[0]?.id,
+        authorId: seededUsers[0]?.id,
+        likes: 5,
+        createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000 + 3600000),
+      },
+      {
+        content: "We've had great results with 1099s and mortgage interest statements. K-1s are trickier - the format varies too much between issuers. GPT-4 sometimes misinterprets the line items.\n\nW-2s work well but honestly, those are already so standardized that traditional OCR is just as effective and cheaper.",
+        discussionId: insertedDiscussions[0]?.id,
+        authorId: seededUsers[1]?.id,
+        likes: 8,
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "Important compliance note: Make sure you update your engagement letters to disclose AI usage. Some clients may have concerns about their data being processed by AI systems.\n\nWe also added a section to our data security policy specifically addressing AI tools.",
+        discussionId: insertedDiscussions[0]?.id,
+        authorId: seededUsers[3]?.id,
+        likes: 15,
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 7200000),
+      },
+      {
+        content: "Great point about engagement letters. We added similar language and surprisingly, clients have been very receptive. Many see it as a sign that we're staying current with technology.",
+        discussionId: insertedDiscussions[0]?.id,
+        authorId: seededUsers[0]?.id,
+        likes: 6,
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      },
+
+      // Replies for second discussion (ML model accuracy)
+      {
+        content: "87% is actually quite good, but the real question is: what's the cost of your false negatives vs. false positives?\n\nIf your model misses high-risk transactions (false negatives), that's a bigger problem than flagging low-risk ones for review (false positives).\n\nI'd focus on optimizing your recall metric specifically for high-risk transactions, even if it means lower overall accuracy.",
+        discussionId: insertedDiscussions[1]?.id,
+        authorId: seededUsers[2]?.id,
+        likes: 18,
+        createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "This is a great perspective. You're right - I've been too focused on overall accuracy. Let me check our confusion matrix for the high-risk class specifically.\n\nCurrent recall for high-risk transactions is 92%, precision is 81%. Does that sound more reasonable?",
+        discussionId: insertedDiscussions[1]?.id,
+        authorId: seededUsers[1]?.id,
+        likes: 9,
+        createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000 + 5400000),
+      },
+      {
+        content: "92% recall is solid! I'd be comfortable deploying that. Just make sure you're monitoring performance over time - models can drift as transaction patterns change.\n\nWe retrain quarterly and have seen performance degrade by 3-5% between retraining cycles.",
+        discussionId: insertedDiscussions[1]?.id,
+        authorId: seededUsers[2]?.id,
+        likes: 13,
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+
+      // Replies for third discussion (RPA vs AI)
+      {
+        content: "We did a pilot with both. For straightforward AP tasks (invoice entry, payment processing), RPA won on cost and reliability. We're using UiPath and it's been rock solid.\n\nAI came out ahead for exception handling and vendor communication. Those unstructured scenarios are where AI shines.\n\nOur hybrid approach: RPA for the 80% of routine cases, AI for the 20% of exceptions.",
+        discussionId: insertedDiscussions[2]?.id,
+        authorId: seededUsers[4]?.id,
+        likes: 14,
+        createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "Hybrid approach makes sense. What AI platform are you using for exception handling?",
+        discussionId: insertedDiscussions[2]?.id,
+        authorId: seededUsers[2]?.id,
+        likes: 4,
+        createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "We're using a combination of Azure Document Intelligence for invoice extraction and GPT-4 for interpreting non-standard formats and vendor queries. Works well together.",
+        discussionId: insertedDiscussions[2]?.id,
+        authorId: seededUsers[4]?.id,
+        likes: 10,
+        createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000 + 3600000),
+      },
+
+      // Replies for fourth discussion (SEC AI disclosure)
+      {
+        content: "We've started maintaining an \"AI Register\" that documents:\n- Each AI system used\n- What it's used for\n- Who oversees it\n- How outputs are validated\n- Risk assessment\n\nBasically treating it like a controls documentation exercise. Our external auditors have reviewed it and think it's a solid approach for the eventual SEC requirements.",
+        discussionId: insertedDiscussions[3]?.id,
+        authorId: seededUsers[5]?.id,
+        likes: 22,
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "This is incredibly helpful! Would you be willing to share a template (even with redactions)? I'd love to see the structure you're using.",
+        discussionId: insertedDiscussions[3]?.id,
+        authorId: seededUsers[3]?.id,
+        likes: 11,
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 7200000),
+      },
+      {
+        content: "I can put together a sanitized template. Will post it in the Resources section this week!",
+        discussionId: insertedDiscussions[3]?.id,
+        authorId: seededUsers[5]?.id,
+        likes: 19,
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      },
+
+      // Replies for seventh discussion (certifications)
+      {
+        content: "I completed the AI+ Accounting certification last year. Honestly, it was pretty high-level and theoretical. Useful for understanding concepts but not very practical.\n\nI got more value from vendor-specific training. If you're using specific tools (UiPath, Alteryx, Power BI), invest in their certification programs. Much more applicable to daily work.",
+        discussionId: insertedDiscussions[6]?.id,
+        authorId: seededUsers[8]?.id,
+        likes: 16,
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "For my team, we did a combination approach:\n1. General AI literacy training (free Coursera courses)\n2. Vendor certifications for the tools we actually use\n3. Internal workshops where team members share what they've learned\n\nThe internal workshops have been surprisingly valuable - real examples from our own work.",
+        discussionId: insertedDiscussions[6]?.id,
+        authorId: seededUsers[9]?.id,
+        likes: 13,
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 14400000),
+      },
+
+      // Replies for eighth discussion (career pivot)
+      {
+        content: "I made this exact transition 3 years ago. Here's my honest take:\n\nYou don't need to become a data scientist. Focus on being a bridge between technical teams and accounting/audit teams. Your domain expertise is MORE valuable than deep technical skills.\n\nLearn enough Python to understand what's possible and communicate with developers. Take a basic stats course. But spend most of your energy on understanding how AI can solve accounting problems.\n\nThat combination - deep accounting knowledge + basic AI literacy - is actually more rare and valuable than pure technical skills.",
+        discussionId: insertedDiscussions[7]?.id,
+        authorId: seededUsers[2]?.id,
+        likes: 25,
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "This is really encouraging! I've been stressing about becoming a Python expert. What you're describing sounds much more achievable and honestly more interesting to me.\n\nDid you find it hard to convince employers that this skillset was valuable?",
+        discussionId: insertedDiscussions[7]?.id,
+        authorId: seededUsers[7]?.id,
+        likes: 8,
+        createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "Not at all. Firms are desperate for people who understand both worlds. I had multiple offers. Your audit experience is a huge asset - you understand controls, risk, accuracy requirements. That's gold when implementing AI in audit workflows.",
+        discussionId: insertedDiscussions[7]?.id,
+        authorId: seededUsers[2]?.id,
+        likes: 14,
+        createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000 + 10800000),
+      },
+
+      // Replies for ninth discussion (Python for accountants)
+      {
+        content: "I recommend \"Automate the Boring Stuff with Python\" as a starting point. Not accounting-specific, but teaches practical automation which is exactly what you need.\n\nThen move to \"Python for Data Analysis\" by Wes McKinney. That's where it gets useful for accounting work.\n\nTook me about 6 months of occasional practice to feel comfortable, another 6 months to use it regularly in my work.",
+        discussionId: insertedDiscussions[8]?.id,
+        authorId: seededUsers[6]?.id,
+        likes: 17,
+        createdAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000),
+      },
+      {
+        content: "For accounting-specific Python, check out the tutorials on the Digital Ledger Resources page! There are some great templates for common tasks like reconciliations, ratio analysis, and financial statement formatting.\n\nStart with those - seeing Python solve actual accounting problems made it click for me way faster than abstract tutorials.",
+        discussionId: insertedDiscussions[8]?.id,
+        authorId: seededUsers[9]?.id,
+        likes: 21,
+        createdAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000 + 7200000),
+      },
+    ];
+
+    await db.insert(forumReplies).values(repliesData);
+    console.log("✓ Seeded forum replies");
+
+    // Update discussion count in categories
+    await db
+      .update(forumCategories)
+      .set({ discussionCount: 3 })
+      .where(sql`${forumCategories.id} = ${seededCategories[0]?.id}`);
+    
+    await db
+      .update(forumCategories)
+      .set({ discussionCount: 3 })
+      .where(sql`${forumCategories.id} = ${seededCategories[1]?.id}`);
+    
+    await db
+      .update(forumCategories)
+      .set({ discussionCount: 3 })
+      .where(sql`${forumCategories.id} = ${seededCategories[2]?.id}`);
+    
+    console.log("✓ Updated category discussion counts");
+
     console.log("Database seeding completed successfully!");
     return { success: true, message: "Database seeded successfully" };
   } catch (error) {

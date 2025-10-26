@@ -13,6 +13,7 @@ import Home from "@/pages/Home";
 import News from "@/pages/News";
 import Article from "@/pages/Article";
 import Forums from "@/pages/Forums";
+import DiscussionDetail from "@/pages/DiscussionDetail";
 import Resources from "@/pages/Resources";
 import Podcasts from "@/pages/Podcasts";
 import Community from "@/pages/Community";
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/news" component={News} />
       <Route path="/news/:id" component={Article} />
       <Route path="/forums" component={Forums} />
+      <Route path="/forums/:id" component={DiscussionDetail} />
       <Route path="/resources" component={Resources} />
       <Route path="/podcasts" component={Podcasts} />
       <Route path="/community" component={Community} />
