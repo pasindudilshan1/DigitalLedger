@@ -200,8 +200,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Database seeding endpoint (admin only)
   app.post('/api/admin/seed-database', isAdmin, async (req: any, res) => {
     try {
-      console.log("Seed database request from admin:", req.user.email);
-      const result = await seedDatabase();
+      const force = req.body.force === true;
+      console.log("Seed database request from admin:", req.user.email, "Force:", force);
+      const result = await seedDatabase(force);
       res.json(result);
     } catch (error) {
       console.error("Error seeding database:", error);

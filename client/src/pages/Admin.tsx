@@ -496,8 +496,8 @@ export default function Admin() {
   };
 
   const seedDatabaseMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("/api/admin/seed-database", "POST", {});
+    mutationFn: async (force: boolean = false) => {
+      return await apiRequest("/api/admin/seed-database", "POST", { force });
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries();
@@ -509,7 +509,7 @@ export default function Admin() {
       } else {
         toast({
           title: "Success",
-          description: "Database seeded successfully with sample data!",
+          description: "Database populated successfully with fresh sample data!",
         });
       }
     },
@@ -524,7 +524,13 @@ export default function Admin() {
 
   const handleSeedDatabase = () => {
     if (window.confirm("This will populate your database with sample news articles, podcasts, resources, forum categories, and community contributors. Continue?")) {
-      seedDatabaseMutation.mutate();
+      seedDatabaseMutation.mutate(false);
+    }
+  };
+
+  const handleRebuildDatabase = () => {
+    if (window.confirm("⚠️ WARNING: This will DELETE all existing articles, podcasts, resources, forums, and community members, then add fresh sample data.\n\nAdmin accounts will be preserved.\n\nAre you sure you want to rebuild the database?")) {
+      seedDatabaseMutation.mutate(true);
     }
   };
 
@@ -539,13 +545,13 @@ export default function Admin() {
             <div className="flex items-center gap-2">
               <Button 
                 variant="outline" 
-                onClick={handleSeedDatabase}
+                onClick={handleRebuildDatabase}
                 disabled={seedDatabaseMutation.isPending}
-                className="flex items-center gap-2" 
-                data-testid="button-seed-database"
+                className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950" 
+                data-testid="button-rebuild-database"
               >
                 <Upload className="h-4 w-4" />
-                {seedDatabaseMutation.isPending ? "Seeding..." : "Seed Database"}
+                {seedDatabaseMutation.isPending ? "Rebuilding..." : "Rebuild Database"}
               </Button>
               <Link href="/">
                 <Button variant="outline" className="flex items-center gap-2" data-testid="button-home">

@@ -3,43 +3,89 @@ import {
   newsArticles,
   podcastEpisodes,
   forumCategories,
+  forumDiscussions,
+  forumReplies,
   resources,
   users,
 } from "@shared/schema";
-import { sql } from "drizzle-orm";
+import { sql, notInArray } from "drizzle-orm";
 
-export async function seedDatabase() {
+export async function clearSeedData() {
+  console.log("Clearing seed data from database...");
+  
+  try {
+    // Delete seed data in correct order to respect foreign key constraints
+    const adminEmails = ['admin@admin.com', 'admin@example.com', 'testuser@example.com'];
+    
+    // Delete forum data (child tables first)
+    await db.delete(forumReplies);
+    console.log("✓ Cleared forum replies");
+    
+    await db.delete(forumDiscussions);
+    console.log("✓ Cleared forum discussions");
+    
+    await db.delete(forumCategories);
+    console.log("✓ Cleared forum categories");
+    
+    // Delete news and content
+    await db.delete(newsArticles);
+    console.log("✓ Cleared news articles");
+    
+    await db.delete(podcastEpisodes);
+    console.log("✓ Cleared podcast episodes");
+    
+    await db.delete(resources);
+    console.log("✓ Cleared resources");
+    
+    // Delete non-admin users last
+    await db.delete(users).where(notInArray(users.email, adminEmails));
+    console.log("✓ Cleared seed users (kept admin accounts)");
+    
+    return { success: true, message: "Seed data cleared successfully" };
+  } catch (error) {
+    console.error("Error clearing seed data:", error);
+    throw error;
+  }
+}
+
+export async function seedDatabase(force: boolean = false) {
   console.log("Starting database seeding...");
   
   try {
-    // Check if database already has seed data
-    const existingUsers = await db.select().from(users).limit(15);
-    const existingNews = await db.select().from(newsArticles).limit(5);
-    const existingPodcasts = await db.select().from(podcastEpisodes).limit(5);
-    const existingResources = await db.select().from(resources).limit(5);
-    const existingCategories = await db.select().from(forumCategories).limit(3);
+    if (force) {
+      console.log("Force flag enabled. Clearing existing seed data...");
+      await clearSeedData();
+    } else {
+      // Check if database already has seed data
+      const existingUsers = await db.select().from(users).limit(15);
+      const existingNews = await db.select().from(newsArticles).limit(5);
+      const existingPodcasts = await db.select().from(podcastEpisodes).limit(5);
+      const existingResources = await db.select().from(resources).limit(5);
+      const existingCategories = await db.select().from(forumCategories).limit(3);
 
-    if (existingUsers.length > 5 || existingNews.length > 3 || existingPodcasts.length > 3) {
-      console.log("Database already contains significant seed data. Skipping seeding to avoid duplicates.");
-      return { 
-        success: true, 
-        message: "Database already contains seed data. No new data added.", 
-        alreadySeeded: true 
-      };
+      if (existingUsers.length > 5 || existingNews.length > 3 || existingPodcasts.length > 3) {
+        console.log("Database already contains significant seed data. Skipping seeding to avoid duplicates.");
+        return { 
+          success: true, 
+          message: "Database already contains seed data. Use force option to rebuild.", 
+          alreadySeeded: true 
+        };
+      }
     }
 
-    console.log("Database appears empty or minimal. Proceeding with seeding...");
+    console.log("Proceeding with fresh seeding...");
 
     const contributorUsers = [
       {
         id: sql`gen_random_uuid()`,
         email: "sarah.mitchell@example.com",
-        name: "Sarah Mitchell",
+        firstName: "Sarah",
+        lastName: "Mitchell",
         role: "user",
         title: "Senior Tax Manager",
         company: "Deloitte",
-        profileImage: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Tax Automation', 'AI Integration']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Tax Automation', 'AI Integration']`,
         bio: "Leading AI-powered tax automation initiatives at Deloitte. 15+ years in tax consulting.",
         points: 2847,
         badges: sql`ARRAY['AI Pioneer', 'Top Contributor']`,
@@ -48,12 +94,13 @@ export async function seedDatabase() {
       {
         id: sql`gen_random_uuid()`,
         email: "james.rodriguez@example.com",
-        name: "James Rodriguez",
+        firstName: "James",
+        lastName: "Rodriguez",
         role: "user",
         title: "Chief Audit Technology Officer",
         company: "KPMG",
-        profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Audit Analytics', 'Machine Learning']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Audit Analytics', 'Machine Learning']`,
         bio: "Championing ML-driven audit procedures across KPMG's global network.",
         points: 2654,
         badges: sql`ARRAY['Innovator', 'Expert Badge']`,
@@ -62,12 +109,13 @@ export async function seedDatabase() {
       {
         id: sql`gen_random_uuid()`,
         email: "emily.chen@example.com",
-        name: "Emily Chen",
+        firstName: "Emily",
+        lastName: "Chen",
         role: "user",
         title: "AI Research Director",
         company: "PwC",
-        profileImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Natural Language Processing', 'Financial Analysis']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Natural Language Processing', 'Financial Analysis']`,
         bio: "Developing NLP solutions for financial document analysis and compliance checking.",
         points: 2531,
         badges: sql`ARRAY['Research Leader', 'AI Champion']`,
@@ -76,12 +124,13 @@ export async function seedDatabase() {
       {
         id: sql`gen_random_uuid()`,
         email: "michael.oconnor@example.com",
-        name: "Michael O'Connor",
+        firstName: "Michael",
+        lastName: "O'Connor",
         role: "user",
         title: "Partner, Advisory Services",
         company: "EY",
-        profileImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Blockchain', 'Smart Contracts']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Blockchain', 'Smart Contracts']`,
         bio: "Blockchain and smart contract specialist advising on audit automation and transparency.",
         points: 2398,
         badges: sql`ARRAY['Blockchain Expert']`,
@@ -90,12 +139,13 @@ export async function seedDatabase() {
       {
         id: sql`gen_random_uuid()`,
         email: "priya.sharma@example.com",
-        name: "Priya Sharma",
+        firstName: "Priya",
+        lastName: "Sharma",
         role: "user",
         title: "Forensic Accounting Lead",
         company: "Grant Thornton",
-        profileImage: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Fraud Detection', 'Data Analytics']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Fraud Detection', 'Data Analytics']`,
         bio: "Using AI to detect sophisticated fraud patterns in financial transactions.",
         points: 2276,
         badges: sql`ARRAY['Fraud Fighter', 'Data Wizard']`,
@@ -104,12 +154,13 @@ export async function seedDatabase() {
       {
         id: sql`gen_random_uuid()`,
         email: "david.kim@example.com",
-        name: "David Kim",
+        firstName: "David",
+        lastName: "Kim",
         role: "user",
         title: "Technology Risk Manager",
         company: "BDO",
-        profileImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Cybersecurity', 'Risk Management']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Cybersecurity', 'Risk Management']`,
         bio: "Implementing AI-driven risk assessment frameworks for emerging technologies.",
         points: 2103,
         badges: sql`ARRAY['Security Pro']`,
@@ -118,12 +169,13 @@ export async function seedDatabase() {
       {
         id: sql`gen_random_uuid()`,
         email: "lisa.thompson@example.com",
-        name: "Lisa Thompson",
+        firstName: "Lisa",
+        lastName: "Thompson",
         role: "user",
         title: "Controller",
         company: "Tesla",
-        profileImage: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Financial Reporting', 'Process Automation']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Financial Reporting', 'Process Automation']`,
         bio: "Transforming month-end close processes with AI automation at a Fortune 500 company.",
         points: 1987,
         badges: sql`ARRAY['Process Master']`,
@@ -132,12 +184,13 @@ export async function seedDatabase() {
       {
         id: sql`gen_random_uuid()`,
         email: "robert.williams@example.com",
-        name: "Robert Williams",
+        firstName: "Robert",
+        lastName: "Williams",
         role: "user",
         title: "AI Solutions Architect",
         company: "Accenture",
-        profileImage: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Cloud Computing', 'AI Architecture']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Cloud Computing', 'AI Architecture']`,
         bio: "Designing scalable AI solutions for finance and accounting transformations.",
         points: 1845,
         badges: sql`ARRAY['Cloud Expert', 'Architect']`,
@@ -146,12 +199,13 @@ export async function seedDatabase() {
       {
         id: sql`gen_random_uuid()`,
         email: "angela.martinez@example.com",
-        name: "Angela Martinez",
+        firstName: "Angela",
+        lastName: "Martinez",
         role: "user",
         title: "VP of Finance Technology",
         company: "Amazon",
-        profileImage: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Digital Transformation', 'Change Management']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Digital Transformation', 'Change Management']`,
         bio: "Leading finance tech initiatives and AI adoption strategies at scale.",
         points: 1723,
         badges: sql`ARRAY['Transformation Leader']`,
@@ -160,12 +214,13 @@ export async function seedDatabase() {
       {
         id: sql`gen_random_uuid()`,
         email: "thomas.anderson@example.com",
-        name: "Thomas Anderson",
+        firstName: "Thomas",
+        lastName: "Anderson",
         role: "user",
         title: "Managing Director",
         company: "RSM",
-        profileImage: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
-        expertise: sql`ARRAY['Strategic Planning', 'AI Ethics']`,
+        profileImageUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
+        expertiseTags: sql`ARRAY['Strategic Planning', 'AI Ethics']`,
         bio: "Guiding mid-market firms through ethical AI adoption in accounting practices.",
         points: 1598,
         badges: sql`ARRAY['Ethics Champion']`,
@@ -469,7 +524,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Digital Ledger Team",
         downloadCount: 2347,
-        rating: 4.8,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -481,7 +536,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Prof. James Wilson",
         downloadCount: 1876,
-        rating: 4.9,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -493,7 +548,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1554224154-26032ffc0d07?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Michael Chen",
         downloadCount: 1654,
-        rating: 4.7,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -505,7 +560,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Ethics Committee",
         downloadCount: 1432,
-        rating: 4.6,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -517,7 +572,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Lisa Morgan",
         downloadCount: 1287,
-        rating: 4.8,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -529,7 +584,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1677442136019-21780ecad995?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Digital Ledger Community",
         downloadCount: 2156,
-        rating: 4.9,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -541,7 +596,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Robert Williams",
         downloadCount: 1543,
-        rating: 4.7,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -553,7 +608,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Compliance Team",
         downloadCount: 1398,
-        rating: 4.6,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -565,7 +620,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Rachel Green",
         downloadCount: 987,
-        rating: 4.8,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -577,7 +632,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Dr. Kevin Park",
         downloadCount: 743,
-        rating: 4.5,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -589,7 +644,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Jennifer Wu",
         downloadCount: 856,
-        rating: 4.7,
+        rating: 5,
         isPublished: true,
       },
       {
@@ -601,7 +656,7 @@ export async function seedDatabase() {
         thumbnailUrl: "https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
         authorName: "Maria Gonzalez",
         downloadCount: 1234,
-        rating: 4.9,
+        rating: 5,
         isPublished: true,
       },
     ];

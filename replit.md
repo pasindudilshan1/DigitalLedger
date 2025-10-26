@@ -4,6 +4,36 @@
 
 Digital Ledger is a modern community platform focused on "AI in Accounting" designed to support over 10,000 members through interactive knowledge-sharing. The platform serves as a comprehensive hub for accounting professionals to stay updated on AI developments, engage in discussions, access educational resources, and listen to expert podcasts. Built with scalability in mind, it features a news aggregator, podcast hub, educational resource library, and robust community engagement tools including forums, polls, and gamification elements.
 
+## Database Seeding & Production Setup
+
+### Admin Credentials
+- Email: admin@admin.com
+- Password: admin123
+
+### Rebuild Database Feature
+The admin panel includes a **"Rebuild Database"** button (orange border) that:
+1. **Clears all seed data** (preserving admin accounts)
+2. **Inserts fresh sample data** with correct schema
+3. **Handles foreign key constraints** properly (deletes child records first)
+
+### Sample Data Included
+When seeded, the database contains:
+- **10 Community Contributors**: Professional profiles with names, titles, companies, expertise tags, and profile images
+- **11 News Articles**: Across 4 categories (automation, fraud-detection, regulatory, generative-ai)
+- **10 Podcast Episodes**: Episodes 3-12 with full metadata, sorted by published date
+- **12 Educational Resources**: Guides, videos, templates, and tools (all with integer ratings)
+- **3 Forum Categories**: Base categories (initially empty of discussions)
+
+### Production Deployment Workflow
+1. **Develop locally** → Development database has seed data
+2. **Publish to Replit** → Schema transfers automatically, but data does NOT
+3. **Visit published URL** → Login as admin (admin@admin.com / admin123)
+4. **Go to Admin Panel** → Navigate to /admin
+5. **Click "Rebuild Database"** → Populates production with identical seed data
+6. **Confirm** → Production database now matches development
+
+This ensures both development and production environments have consistent, identical sample data.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
