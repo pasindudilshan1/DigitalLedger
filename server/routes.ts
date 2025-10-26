@@ -18,6 +18,7 @@ import {
   insertUserInvitationSchema,
   insertUserSchema,
 } from "@shared/schema";
+import { seedDatabase } from "./seed";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware
@@ -193,6 +194,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Database seeding endpoint (admin only)
+  app.post('/api/admin/seed-database', isAdmin, async (req: any, res) => {
+    try {
+      console.log("Seed database request from admin:", req.user.email);
+      const result = await seedDatabase();
+      res.json(result);
+    } catch (error) {
+      console.error("Error seeding database:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to seed database", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 

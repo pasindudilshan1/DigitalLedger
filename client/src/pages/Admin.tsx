@@ -495,6 +495,39 @@ export default function Admin() {
     }
   };
 
+  const seedDatabaseMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/admin/seed-database", "POST", {});
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries();
+      if (data.alreadySeeded) {
+        toast({
+          title: "Already Seeded",
+          description: data.message || "Database already contains seed data.",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Database seeded successfully with sample data!",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to seed database.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSeedDatabase = () => {
+    if (window.confirm("This will populate your database with sample news articles, podcasts, resources, forum categories, and community contributors. Continue?")) {
+      seedDatabaseMutation.mutate();
+    }
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-4xl mx-auto">
@@ -503,12 +536,24 @@ export default function Admin() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white" data-testid="text-admin-title">
               Content Control Panel
             </h1>
-            <Link href="/">
-              <Button variant="outline" className="flex items-center gap-2" data-testid="button-home">
-                <Home className="h-4 w-4" />
-                Return to Home
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleSeedDatabase}
+                disabled={seedDatabaseMutation.isPending}
+                className="flex items-center gap-2" 
+                data-testid="button-seed-database"
+              >
+                <Upload className="h-4 w-4" />
+                {seedDatabaseMutation.isPending ? "Seeding..." : "Seed Database"}
               </Button>
-            </Link>
+              <Link href="/">
+                <Button variant="outline" className="flex items-center gap-2" data-testid="button-home">
+                  <Home className="h-4 w-4" />
+                  Return to Home
+                </Button>
+              </Link>
+            </div>
           </div>
           <p className="text-gray-600 dark:text-gray-300" data-testid="text-admin-description">
             Create and manage articles and podcast episodes for the Digital Ledger community.
