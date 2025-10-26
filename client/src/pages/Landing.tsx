@@ -216,55 +216,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Forum Section */}
-      <section className="py-16 bg-gray-50 dark:bg-gray-900" data-testid="forum-section">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4" data-testid="forum-title">
-              Community Forums
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300 text-lg max-w-3xl mx-auto">
-              Engage with fellow professionals, share insights, and get answers to your AI accounting challenges
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {forumCategories.map((category, index) => (
-              <Card key={index} className="hover:shadow-md transition-shadow" data-testid={`forum-category-${index}`}>
-                <CardContent className="p-6">
-                  <div className="flex items-center mb-4">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 ${category.color}`}>
-                      {category.icon}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white" data-testid={`category-name-${index}`}>
-                        {category.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400" data-testid={`category-discussions-${index}`}>
-                        {category.discussions}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4" data-testid={`category-description-${index}`}>
-                    {category.description}
-                  </p>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400" data-testid={`category-latest-${index}`}>
-                      Latest: {category.latest}
-                    </span>
-                    <span className="text-primary dark:text-ai-teal font-medium" data-testid={`category-join-${index}`}>
-                      Join Discussion →
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Podcast Section */}
-      <section className="py-16 bg-white dark:bg-dark-bg" data-testid="podcast-section">
+      <section className="py-16 bg-gray-50 dark:bg-gray-900" data-testid="podcast-section">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4" data-testid="podcast-title">
@@ -344,6 +297,53 @@ export default function Landing() {
             >
               View All Episodes
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Forum Section */}
+      <section className="py-16 bg-white dark:bg-dark-bg" data-testid="forum-section">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4" data-testid="forum-title">
+              Community Forums
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 text-lg max-w-3xl mx-auto">
+              Engage with fellow professionals, share insights, and get answers to your AI accounting challenges
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {forumCategories.map((category, index) => (
+              <Card key={index} className="hover:shadow-md transition-shadow" data-testid={`forum-category-${index}`}>
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 ${category.color}`}>
+                      {category.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white" data-testid={`category-name-${index}`}>
+                        {category.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400" data-testid={`category-discussions-${index}`}>
+                        {category.discussions}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4" data-testid={`category-description-${index}`}>
+                    {category.description}
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400" data-testid={`category-latest-${index}`}>
+                      Latest: {category.latest}
+                    </span>
+                    <span className="text-primary dark:text-ai-teal font-medium" data-testid={`category-join-${index}`}>
+                      Join Discussion →
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
