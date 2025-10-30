@@ -84,7 +84,10 @@ export interface IStorage {
   
   // Podcast operations
   getPodcastEpisodes(limit?: number): Promise<PodcastEpisode[]>;
+  getPodcastEpisode(id: string): Promise<PodcastEpisode | undefined>;
   createPodcastEpisode(episode: InsertPodcastEpisode): Promise<PodcastEpisode>;
+  updatePodcastEpisode(episodeId: string, updates: Partial<InsertPodcastEpisode>): Promise<PodcastEpisode | undefined>;
+  deletePodcastEpisode(episodeId: string): Promise<boolean>;
   getFeaturedPodcastEpisode(): Promise<PodcastEpisode | undefined>;
   
   // Poll operations
@@ -598,12 +601,43 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
+  async getPodcastEpisode(id: string): Promise<PodcastEpisode | undefined> {
+    const [episode] = await db
+      .select()
+      .from(podcastEpisodes)
+      .where(eq(podcastEpisodes.id, id));
+    return episode;
+  }
+
   async createPodcastEpisode(episode: InsertPodcastEpisode): Promise<PodcastEpisode> {
     const [created] = await db
       .insert(podcastEpisodes)
       .values(episode)
       .returning();
     return created;
+  }
+
+  async updatePodcastEpisode(episodeId: string, updates: Partial<InsertPodcastEpisode>): Promise<PodcastEpisode | undefined> {
+    const [updated] = await db
+      .update(podcastEpisodes)
+      .set(updates)
+      .where(eq(podcastEpisodes.id, episodeId))
+      .returning();
+    return updated;
+  }
+
+  async deletePodcastEpisode(episodeId: string): Promise<boolean> {
+    // Delete user interactions related to this podcast
+    await db
+      .delete(userInteractions)
+      .where(sql`${userInteractions.targetType} = 'podcast' AND ${userInteractions.targetId} = ${episodeId}`);
+
+    // Delete the podcast episode
+    const result = await db
+      .delete(podcastEpisodes)
+      .where(eq(podcastEpisodes.id, episodeId));
+    
+    return true;
   }
 
   async getFeaturedPodcastEpisode(): Promise<PodcastEpisode | undefined> {

@@ -212,3 +212,24 @@ export async function isAdmin(req: Request, res: Response, next: NextFunction) {
 
   next();
 }
+
+// Middleware to check if user is editor or admin
+export async function isEditorOrAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    // First run authentication middleware
+    return isAuthenticated(req, res, () => {
+      const userRole = (req.user as any)?.role;
+      if (userRole !== "editor" && userRole !== "admin") {
+        return res.status(403).json({ message: "Editor or admin access required" });
+      }
+      next();
+    });
+  }
+
+  const userRole = (req.user as any)?.role;
+  if (userRole !== "editor" && userRole !== "admin") {
+    return res.status(403).json({ message: "Editor or admin access required" });
+  }
+
+  next();
+}

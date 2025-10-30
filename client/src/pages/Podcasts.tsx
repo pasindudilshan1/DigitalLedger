@@ -16,7 +16,8 @@ import {
   Clock,
   Mic,
   Calendar,
-  PlusCircle
+  PlusCircle,
+  Pencil
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Link } from "wouter";
@@ -122,7 +123,19 @@ export default function Podcasts() {
 
         {/* Featured Episode Player */}
         {featuredEpisode && (
-          <Card className="mb-12" data-testid="featured-episode">
+          <Card className="mb-12 relative" data-testid="featured-episode">
+            {(userRole === 'editor' || userRole === 'admin') && (
+              <Link href={`/podcasts/${featuredEpisode.id}/edit`}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-4 right-4 z-10 bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800"
+                  data-testid="button-edit-featured-podcast"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
             <CardContent className="p-8">
               <div className="flex flex-col lg:flex-row items-center space-y-6 lg:space-y-0 lg:space-x-8">
                 <img 
@@ -234,7 +247,19 @@ export default function Podcasts() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8" data-testid="episodes-grid">
             {filteredEpisodes.map((episode: any) => (
-              <Card key={episode.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300" data-testid={`episode-card-${episode.id}`}>
+              <Card key={episode.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300 relative" data-testid={`episode-card-${episode.id}`}>
+                {(userRole === 'editor' || userRole === 'admin') && (
+                  <Link href={`/podcasts/${episode.id}/edit`}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 z-10 bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800"
+                      data-testid={`button-edit-podcast-${episode.id}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                )}
                 <div className="aspect-video w-full overflow-hidden">
                   <img 
                     src={episode.imageUrl || "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=300"}

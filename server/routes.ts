@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin } from "./simpleAuth";
+import { setupAuth, isAuthenticated, isAdmin, isEditorOrAdmin } from "./simpleAuth";
 import { getSession } from "./replitAuth"; // Keep session config
 import {
   ObjectStorageService,
@@ -290,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/news', isAuthenticated, async (req: any, res) => {
+  app.post('/api/news', isEditorOrAdmin, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const articleData = insertNewsArticleSchema.parse({
@@ -590,7 +590,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/podcasts', isAuthenticated, async (req: any, res) => {
+  app.get('/api/podcasts/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const episode = await storage.getPodcastEpisode(id);
+      if (!episode) {
+        return res.status(404).json({ message: "Podcast episode not found" });
+      }
+      res.json(episode);
+    } catch (error) {
+      console.error("Error fetching podcast episode:", error);
+      res.status(500).json({ message: "Failed to fetch podcast episode" });
+    }
+  });
+
+  app.post('/api/podcasts', isEditorOrAdmin, async (req: any, res) => {
     try {
       const episodeData = insertPodcastEpisodeSchema.parse(req.body);
       const episode = await storage.createPodcastEpisode(episodeData);
@@ -598,6 +612,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating podcast episode:", error);
       res.status(500).json({ message: "Failed to create podcast episode" });
+    }
+  });
+
+  app.patch('/api/podcasts/:id', isEditorOrAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const episodeData = insertPodcastEpisodeSchema.partial().parse(req.body);
+      const episode = await storage.updatePodcastEpisode(id, episodeData);
+      if (!episode) {
+        return res.status(404).json({ message: "Podcast episode not found" });
+      }
+      res.json(episode);
+    } catch (error) {
+      console.error("Error updating podcast episode:", error);
+      res.status(500).json({ message: "Failed to update podcast episode" });
+    }
+  });
+
+  app.delete('/api/podcasts/:id', isEditorOrAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deletePodcastEpisode(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting podcast episode:", error);
+      res.status(500).json({ message: "Failed to delete podcast episode" });
     }
   });
 

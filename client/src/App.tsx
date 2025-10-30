@@ -15,6 +15,7 @@ import News from "@/pages/News";
 import Article from "@/pages/Article";
 import AddNews from "@/pages/AddNews";
 import AddPodcast from "@/pages/AddPodcast";
+import EditPodcast from "@/pages/EditPodcast";
 import Forums from "@/pages/Forums";
 import DiscussionDetail from "@/pages/DiscussionDetail";
 import Resources from "@/pages/Resources";
@@ -33,6 +34,7 @@ function Router() {
         <>
           <Route path="/news/add" component={AddNews} />
           <Route path="/podcasts/add" component={AddPodcast} />
+          <Route path="/podcasts/:id/edit" component={EditPodcast} />
           <Route path="/admin" component={Admin} />
           <Route path="/admin/users" component={UserManagement} />
         </>
