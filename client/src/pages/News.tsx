@@ -80,7 +80,7 @@ export default function News() {
               </p>
             </div>
             {(userRole === 'editor' || userRole === 'admin') && (
-              <Link href="/admin">
+              <Link href="/news/add">
                 <Button 
                   className="flex items-center gap-2"
                   data-testid="button-add-news"

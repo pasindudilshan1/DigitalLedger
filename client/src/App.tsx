@@ -13,6 +13,7 @@ import Logout from "@/pages/Logout";
 import Home from "@/pages/Home";
 import News from "@/pages/News";
 import Article from "@/pages/Article";
+import AddNews from "@/pages/AddNews";
 import Forums from "@/pages/Forums";
 import DiscussionDetail from "@/pages/DiscussionDetail";
 import Resources from "@/pages/Resources";
@@ -26,9 +27,17 @@ function Router() {
 
   return (
     <Switch>
+      {/* Authenticated routes that need to be checked first */}
+      {!isLoading && isAuthenticated && (
+        <>
+          <Route path="/news/add" component={AddNews} />
+          <Route path="/admin" component={Admin} />
+          <Route path="/admin/users" component={UserManagement} />
+        </>
+      )}
+      
       {/* Public routes - accessible to everyone */}
       <Route path="/news" component={News} />
-      <Route path="/news/:id" component={Article} />
       <Route path="/forums" component={Forums} />
       <Route path="/forums/:id" component={DiscussionDetail} />
       <Route path="/resources" component={Resources} />
@@ -37,17 +46,15 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/logout" component={Logout} />
       
+      {/* Article detail route must come AFTER /news/add to avoid matching "add" as an id */}
+      <Route path="/news/:id" component={Article} />
+      
       {isLoading || !isAuthenticated ? (
-        <>
-          <Route path="/" component={Landing} />
-        </>
+        <Route path="/" component={Landing} />
       ) : (
-        <>
-          <Route path="/" component={Home} />
-          <Route path="/admin" component={Admin} />
-          <Route path="/admin/users" component={UserManagement} />
-        </>
+        <Route path="/" component={Home} />
       )}
+      
       <Route component={NotFound} />
     </Switch>
   );
