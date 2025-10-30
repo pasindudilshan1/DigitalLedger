@@ -543,6 +543,12 @@ export default function Admin() {
               Content Control Panel
             </h1>
             <div className="flex items-center gap-2">
+              <Link href="/admin/users">
+                <Button variant="default" className="flex items-center gap-2" data-testid="button-user-management">
+                  <Users className="h-4 w-4" />
+                  User Management
+                </Button>
+              </Link>
               <Button 
                 variant="outline" 
                 onClick={handleRebuildDatabase}
