@@ -110,6 +110,11 @@ Preferred communication style: Simple, everyday language.
 - **Forum System**: Hierarchical discussion structure with categories, discussions, and replies
 - **Resource Library**: Educational content management with type-based organization
 - **Podcast Hub**: Audio content management with embedded player support
+  - **Dedicated Add Podcast Page** (/podcasts/add): Streamlined episode creation interface for editors and admins
+  - Role-based "Add Podcast" button visible only to editors and admins on Podcasts page
+  - Form validation enforces required field (title only)
+  - Optional fields: description, episode number, duration, audio URL, host/guest information, cover image
+  - Auto-redirect to podcast hub after successful episode creation
 - **Polling System**: Community engagement through surveys and polls
 
 ### File Upload & Media
