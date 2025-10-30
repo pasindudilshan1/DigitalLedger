@@ -14,6 +14,7 @@ import Home from "@/pages/Home";
 import News from "@/pages/News";
 import Article from "@/pages/Article";
 import AddNews from "@/pages/AddNews";
+import AddPodcast from "@/pages/AddPodcast";
 import Forums from "@/pages/Forums";
 import DiscussionDetail from "@/pages/DiscussionDetail";
 import Resources from "@/pages/Resources";
@@ -31,6 +32,7 @@ function Router() {
       {!isLoading && isAuthenticated && (
         <>
           <Route path="/news/add" component={AddNews} />
+          <Route path="/podcasts/add" component={AddPodcast} />
           <Route path="/admin" component={Admin} />
           <Route path="/admin/users" component={UserManagement} />
         </>
