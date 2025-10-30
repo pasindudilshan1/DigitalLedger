@@ -103,6 +103,10 @@ Preferred communication style: Simple, everyday language.
 
 ### Content Management System
 - **News Aggregation**: Curated feed system with categorization and filtering
+  - **Dedicated Add News Page** (/news/add): Streamlined article creation interface for editors and admins
+  - Role-based "Add News" button visible only to editors and admins on News page
+  - Form validation enforces required fields (title, content, category)
+  - Auto-redirect to news feed after successful article creation
 - **Forum System**: Hierarchical discussion structure with categories, discussions, and replies
 - **Resource Library**: Educational content management with type-based organization
 - **Podcast Hub**: Audio content management with embedded player support
