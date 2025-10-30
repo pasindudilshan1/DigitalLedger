@@ -38,7 +38,7 @@ export const users = pgTable("users", {
   bio: text("bio"),
   points: integer("points").default(0),
   badges: text("badges").array(),
-  role: varchar("role").default("member"), // admin, moderator, member
+  role: varchar("role").default("subscriber"), // subscriber, contributor, editor, admin
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -48,7 +48,7 @@ export const users = pgTable("users", {
 export const userInvitations = pgTable("user_invitations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique().notNull(),
-  role: varchar("role").notNull().default("member"), // admin, moderator, member
+  role: varchar("role").notNull().default("subscriber"), // subscriber, contributor, editor, admin
   invitedBy: varchar("invited_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   acceptedAt: timestamp("accepted_at"),
@@ -315,9 +315,34 @@ export const insertUserInvitationSchema = createInsertSchema(userInvitations).om
   revokedAt: true,
 });
 
+// Admin user management schemas
+export const adminCreateUserSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  role: z.enum(["subscriber", "contributor", "editor", "admin"]).default("subscriber"),
+  title: z.string().optional(),
+  company: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const adminUpdateUserSchema = z.object({
+  email: z.string().email("Invalid email format").optional(),
+  firstName: z.string().min(1, "First name is required").optional(),
+  lastName: z.string().min(1, "Last name is required").optional(),
+  role: z.enum(["subscriber", "contributor", "editor", "admin"]).optional(),
+  title: z.string().optional(),
+  company: z.string().optional(),
+  isActive: z.boolean().optional(),
+  password: z.string().min(6, "Password must be at least 6 characters").optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type AdminCreateUser = z.infer<typeof adminCreateUserSchema>;
+export type AdminUpdateUser = z.infer<typeof adminUpdateUserSchema>;
 export type LoginRequest = z.infer<typeof loginSchema>;
 export type RegisterRequest = z.infer<typeof registerSchema>;
 export type NewsArticle = typeof newsArticles.$inferSelect;
