@@ -158,32 +158,37 @@ export default function News() {
                     <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                       <button 
                         className="flex items-center space-x-1 hover:text-red-500 transition-colors"
-                        onClick={() => handleLike(article.id)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleLike(article.id);
+                        }}
                         data-testid={`like-${article.id}`}
                       >
                         <Heart className="h-4 w-4" />
                         <span>{article.likes || 0}</span>
                       </button>
-                      <button className="flex items-center space-x-1 hover:text-blue-500 transition-colors" data-testid={`comment-${article.id}`}>
+                      <button 
+                        className="flex items-center space-x-1 hover:text-blue-500 transition-colors" 
+                        onClick={(e) => e.preventDefault()}
+                        data-testid={`comment-${article.id}`}
+                      >
                         <MessageCircle className="h-4 w-4" />
                         <span>0</span>
                       </button>
-                      <button className="flex items-center space-x-1 hover:text-green-500 transition-colors" data-testid={`share-${article.id}`}>
+                      <button 
+                        className="flex items-center space-x-1 hover:text-green-500 transition-colors" 
+                        onClick={(e) => e.preventDefault()}
+                        data-testid={`share-${article.id}`}
+                      >
                         <Share className="h-4 w-4" />
                         <span>Share</span>
                       </button>
                     </div>
                     
                     {article.sourceUrl && (
-                      <a 
-                        href={article.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-primary dark:text-ai-teal hover:underline"
-                        data-testid={`read-more-${article.id}`}
-                      >
+                      <span className="text-sm font-medium text-primary dark:text-ai-teal">
                         Read More →
-                      </a>
+                      </span>
                     )}
                   </div>
                 </CardContent>
