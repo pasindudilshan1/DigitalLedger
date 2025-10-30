@@ -17,6 +17,8 @@ import {
   insertPollSchema,
   insertUserInvitationSchema,
   insertUserSchema,
+  adminCreateUserSchema,
+  adminUpdateUserSchema,
 } from "@shared/schema";
 import { seedDatabase } from "./seed";
 
@@ -36,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth route is now handled in simpleAuth.ts
 
   // User management routes (admin only)
-  app.get('/api/users', isAdmin, async (req: any, res) => {
+  app.get('/api/admin/users', isAdmin, async (req: any, res) => {
     try {
       const { q, role, active } = req.query;
       const filters: any = {};
@@ -45,7 +47,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (active !== undefined) filters.active = active === 'true';
       
       const users = await storage.listUsers(filters);
-      res.json(users);
+      
+      // Remove password hashes from all users
+      const sanitizedUsers = users.map((user: any) => {
+        const { passwordHash, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      
+      res.json(sanitizedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
@@ -142,22 +151,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Direct user management routes (admin only)
-  app.post('/api/users/create', isAdmin, async (req: any, res) => {
+  app.post('/api/admin/users', isAdmin, async (req: any, res) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
-      const user = await storage.createUser(userData);
-      res.json(user);
+      const bcrypt = await import('bcrypt');
+      const result = adminCreateUserSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid input", errors: result.error.errors });
+      }
+      
+      const { password, ...userData } = result.data;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(409).json({ message: "User already exists with this email" });
+      }
+      
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+      
+      const user = await storage.createUser({
+        ...userData,
+        passwordHash,
+      });
+      
+      // Remove password hash from response
+      const { passwordHash: _, ...userResponse } = user as any;
+      res.json(userResponse);
     } catch (error) {
       console.error("Error creating user:", error);
       res.status(500).json({ message: "Failed to create user" });
     }
   });
 
-  app.put('/api/users/:id', isAdmin, async (req: any, res) => {
+  app.patch('/api/admin/users/:id', isAdmin, async (req: any, res) => {
     try {
+      const bcrypt = await import('bcrypt');
       const userId = req.params.id;
       const adminUserId = req.user.id;
-      const updates = insertUserSchema.partial().parse(req.body);
+      
+      const result = adminUpdateUserSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid input", errors: result.error.errors });
+      }
+      
+      const { password, ...updates } = result.data;
       
       // Prevent self-demotion if last admin
       if (updates.role && updates.role !== 'admin' && userId === adminUserId) {
@@ -167,15 +206,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const user = await storage.updateUser(userId, updates);
-      res.json(user);
+      // Hash password if provided
+      const finalUpdates: any = { ...updates };
+      if (password) {
+        finalUpdates.passwordHash = await bcrypt.hash(password, 12);
+      }
+      
+      const user = await storage.updateUser(userId, finalUpdates);
+      
+      // Remove password hash from response
+      const { passwordHash: _, ...userResponse } = user as any;
+      res.json(userResponse);
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
     }
   });
 
-  app.delete('/api/users/:id', isAdmin, async (req: any, res) => {
+  app.delete('/api/admin/users/:id', isAdmin, async (req: any, res) => {
     try {
       const userId = req.params.id;
       const adminUserId = req.user.id;
