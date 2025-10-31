@@ -364,12 +364,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         categoryIds = [category as string];
       }
       // Pass user role to filter by status (admins/editors see all, regular users see only published)
-      const userRole = req.user?.role;
+      // Check session for authenticated user since this is a public route
+      let userRole: string | undefined;
+      if (req.session?.userId) {
+        const user = await storage.getUser(req.session.userId);
+        userRole = user?.role;
+        console.log(`[GET /api/news] Authenticated user: ${user?.email}, role: ${userRole}`);
+      } else {
+        console.log(`[GET /api/news] Unauthenticated request (no session)`);
+      }
       const articles = await storage.getNewsArticles(
         categoryIds,
         limit ? parseInt(limit as string) : undefined,
         userRole
       );
+      console.log(`[GET /api/news] Returning ${articles.length} articles, userRole: ${userRole}, statuses: ${articles.map(a => a.status).join(', ')}`);
       res.json(articles);
     } catch (error) {
       console.error("Error fetching news:", error);

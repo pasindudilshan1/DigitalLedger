@@ -412,28 +412,38 @@ export class DatabaseStorage implements IStorage {
     const canSeeAllStatuses = userRole === 'admin' || userRole === 'editor';
     
     if (categoryIds && categoryIds.length > 0) {
+      // Build the where clause - always include category filter, add status filter for non-admins
+      const whereClause = canSeeAllStatuses
+        ? inArray(articleCategories.categoryId, categoryIds)
+        : and(
+            inArray(articleCategories.categoryId, categoryIds),
+            eq(newsArticles.status, 'published')
+          );
+      
       const results = await db
         .selectDistinct({ article: newsArticles })
         .from(newsArticles)
         .innerJoin(articleCategories, eq(articleCategories.articleId, newsArticles.id))
-        .where(
-          canSeeAllStatuses
-            ? inArray(articleCategories.categoryId, categoryIds)
-            : and(
-                inArray(articleCategories.categoryId, categoryIds),
-                eq(newsArticles.status, 'published')
-              )
-        )
+        .where(whereClause)
         .orderBy(desc(newsArticles.publishedAt))
         .limit(limit);
       articles = results.map(r => r.article);
     } else {
-      articles = await db
-        .select()
-        .from(newsArticles)
-        .where(canSeeAllStatuses ? undefined : eq(newsArticles.status, 'published'))
-        .orderBy(desc(newsArticles.publishedAt))
-        .limit(limit);
+      // No category filter - admins see all, regular users see only published
+      if (canSeeAllStatuses) {
+        articles = await db
+          .select()
+          .from(newsArticles)
+          .orderBy(desc(newsArticles.publishedAt))
+          .limit(limit);
+      } else {
+        articles = await db
+          .select()
+          .from(newsArticles)
+          .where(eq(newsArticles.status, 'published'))
+          .orderBy(desc(newsArticles.publishedAt))
+          .limit(limit);
+      }
     }
 
     const articlesWithCategories = await Promise.all(
