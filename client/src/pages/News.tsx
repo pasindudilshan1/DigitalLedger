@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Heart, MessageCircle, Share, Search, PlusCircle, CheckCircle, XCircle } from "lucide-react";
+import { Heart, MessageCircle, Share, Search, PlusCircle, CheckCircle, XCircle, Pencil } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -184,7 +184,19 @@ export default function News() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8" data-testid="news-grid">
             {filteredNews.map((article: any) => (
-              <Card key={article.id} className="hover:shadow-lg transition-shadow duration-300" data-testid={`news-card-${article.id}`}>
+              <Card key={article.id} className="hover:shadow-lg transition-shadow duration-300 relative" data-testid={`news-card-${article.id}`}>
+                {isEditorOrAdmin && (
+                  <Link href={`/news/${article.id}/edit`}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 z-10 bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800"
+                      data-testid={`button-edit-news-${article.id}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                )}
                 <Link href={`/news/${article.id}`}>
                   <div className="aspect-video w-full overflow-hidden rounded-t-lg cursor-pointer">
                     <img 
