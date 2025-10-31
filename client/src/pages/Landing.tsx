@@ -114,7 +114,7 @@ export default function Landing() {
               </Button>
             </div>
             <p className="text-xl md:text-2xl text-blue-100 mt-4" data-testid="text-no-spam">
-              No spam, get powerful insights!
+              No spam, just powerful insights!
             </p>
           </div>
         </div>
