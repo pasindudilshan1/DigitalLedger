@@ -79,22 +79,24 @@ export interface IStorage {
   initializeNewsCategories(): Promise<void>;
   
   // News operations
-  getNewsArticles(categoryIds?: string[], limit?: number): Promise<(NewsArticle & { categories: NewsCategory[] })[]>;
+  getNewsArticles(categoryIds?: string[], limit?: number, userRole?: string): Promise<(NewsArticle & { categories: NewsCategory[] })[]>;
   getNewsArticle(id: string): Promise<(NewsArticle & { categories: NewsCategory[] }) | undefined>;
   createNewsArticle(article: InsertNewsArticle, categoryIds: string[]): Promise<NewsArticle & { categories: NewsCategory[] }>;
   updateNewsArticle(articleId: string, updates: Partial<InsertNewsArticle>, categoryIds?: string[]): Promise<(NewsArticle & { categories: NewsCategory[] }) | undefined>;
   deleteNewsArticle(articleId: string): Promise<boolean>;
   archiveNewsArticle(articleId: string): Promise<NewsArticle | undefined>;
+  toggleNewsArticleStatus(articleId: string, status: 'published' | 'draft'): Promise<NewsArticle | undefined>;
   likeNewsArticle(articleId: string, userId: string): Promise<void>;
   
   // Forum operations
   getForumCategories(): Promise<ForumCategory[]>;
   createForumCategory(category: InsertForumCategory): Promise<ForumCategory>;
-  getForumDiscussions(categoryId?: string, newsCategoryIds?: string[], limit?: number): Promise<(ForumDiscussion & { author: User; category: ForumCategory; newsCategories: NewsCategory[] })[]>;
+  getForumDiscussions(categoryId?: string, newsCategoryIds?: string[], limit?: number, userRole?: string): Promise<(ForumDiscussion & { author: User; category: ForumCategory; newsCategories: NewsCategory[] })[]>;
   createForumDiscussion(discussion: InsertForumDiscussion, newsCategoryIds?: string[]): Promise<ForumDiscussion & { newsCategories: NewsCategory[] }>;
   getForumDiscussion(id: string): Promise<(ForumDiscussion & { author: User; category: ForumCategory; newsCategories: NewsCategory[]; replies: (ForumReply & { author: User })[] }) | undefined>;
   updateForumDiscussion(discussionId: string, updates: Partial<InsertForumDiscussion>, newsCategoryIds?: string[]): Promise<(ForumDiscussion & { newsCategories: NewsCategory[] }) | undefined>;
   deleteForumDiscussion(discussionId: string): Promise<boolean>;
+  toggleForumDiscussionStatus(discussionId: string, status: 'published' | 'draft'): Promise<ForumDiscussion | undefined>;
   createForumReply(reply: InsertForumReply): Promise<ForumReply>;
   likeForumDiscussion(discussionId: string, userId: string): Promise<void>;
   likeForumReply(replyId: string, userId: string): Promise<void>;
@@ -107,11 +109,12 @@ export interface IStorage {
   searchResources(query: string): Promise<Resource[]>;
   
   // Podcast operations
-  getPodcastEpisodes(categoryIds?: string[], limit?: number): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]>;
+  getPodcastEpisodes(categoryIds?: string[], limit?: number, userRole?: string): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]>;
   getPodcastEpisode(id: string): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined>;
   createPodcastEpisode(episode: InsertPodcastEpisode, categoryIds: string[]): Promise<PodcastEpisode & { categories: NewsCategory[] }>;
   updatePodcastEpisode(episodeId: string, updates: Partial<InsertPodcastEpisode>, categoryIds?: string[]): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined>;
   deletePodcastEpisode(episodeId: string): Promise<boolean>;
+  togglePodcastEpisodeStatus(episodeId: string, status: 'published' | 'draft'): Promise<PodcastEpisode | undefined>;
   getFeaturedPodcastEpisode(): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined>;
   
   // Poll operations
@@ -402,15 +405,25 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getNewsArticles(categoryIds?: string[], limit = 10): Promise<(NewsArticle & { categories: NewsCategory[] })[]> {
+  async getNewsArticles(categoryIds?: string[], limit = 10, userRole?: string): Promise<(NewsArticle & { categories: NewsCategory[] })[]> {
     let articles: NewsArticle[];
+    
+    // Admins and editors can see all articles; regular users only see published
+    const canSeeAllStatuses = userRole === 'admin' || userRole === 'editor';
     
     if (categoryIds && categoryIds.length > 0) {
       const results = await db
         .selectDistinct({ article: newsArticles })
         .from(newsArticles)
         .innerJoin(articleCategories, eq(articleCategories.articleId, newsArticles.id))
-        .where(inArray(articleCategories.categoryId, categoryIds))
+        .where(
+          canSeeAllStatuses
+            ? inArray(articleCategories.categoryId, categoryIds)
+            : and(
+                inArray(articleCategories.categoryId, categoryIds),
+                eq(newsArticles.status, 'published')
+              )
+        )
         .orderBy(desc(newsArticles.publishedAt))
         .limit(limit);
       articles = results.map(r => r.article);
@@ -418,6 +431,7 @@ export class DatabaseStorage implements IStorage {
       articles = await db
         .select()
         .from(newsArticles)
+        .where(canSeeAllStatuses ? undefined : eq(newsArticles.status, 'published'))
         .orderBy(desc(newsArticles.publishedAt))
         .limit(limit);
     }
@@ -563,6 +577,15 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async toggleNewsArticleStatus(articleId: string, status: 'published' | 'draft'): Promise<NewsArticle | undefined> {
+    const [updated] = await db
+      .update(newsArticles)
+      .set({ status })
+      .where(eq(newsArticles.id, articleId))
+      .returning();
+    return updated;
+  }
+
   async likeNewsArticle(articleId: string, userId: string): Promise<void> {
     const existing = await this.getUserInteraction(userId, 'news', articleId, 'like');
     
@@ -598,8 +621,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getForumDiscussions(categoryId?: string, newsCategoryIds?: string[], limit = 20): Promise<(ForumDiscussion & { author: User; category: ForumCategory; newsCategories: NewsCategory[] })[]> {
+  async getForumDiscussions(categoryId?: string, newsCategoryIds?: string[], limit = 20, userRole?: string): Promise<(ForumDiscussion & { author: User; category: ForumCategory; newsCategories: NewsCategory[] })[]> {
     let discussionIds: string[] = [];
+    
+    // Admins and editors can see all discussions; regular users only see published
+    const canSeeAllStatuses = userRole === 'admin' || userRole === 'editor';
     
     if (newsCategoryIds && newsCategoryIds.length > 0) {
       const distinctResults = await db
@@ -621,15 +647,20 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(forumCategories, eq(forumDiscussions.categoryId, forumCategories.id))
       .orderBy(desc(forumDiscussions.lastReplyAt), desc(forumDiscussions.createdAt));
     
-    if (categoryId && newsCategoryIds && newsCategoryIds.length > 0) {
-      query = query.where(and(
-        eq(forumDiscussions.categoryId, categoryId),
-        inArray(forumDiscussions.id, discussionIds)
-      )) as any;
-    } else if (categoryId) {
-      query = query.where(eq(forumDiscussions.categoryId, categoryId)) as any;
-    } else if (newsCategoryIds && newsCategoryIds.length > 0) {
-      query = query.where(inArray(forumDiscussions.id, discussionIds)) as any;
+    // Build where conditions with status filter
+    const whereConditions: any[] = [];
+    if (!canSeeAllStatuses) {
+      whereConditions.push(eq(forumDiscussions.status, 'published'));
+    }
+    if (categoryId) {
+      whereConditions.push(eq(forumDiscussions.categoryId, categoryId));
+    }
+    if (newsCategoryIds && newsCategoryIds.length > 0) {
+      whereConditions.push(inArray(forumDiscussions.id, discussionIds));
+    }
+    
+    if (whereConditions.length > 0) {
+      query = query.where(and(...whereConditions)) as any;
     }
     
     const results = await query.limit(limit);
@@ -868,6 +899,15 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
+  async toggleForumDiscussionStatus(discussionId: string, status: 'published' | 'draft'): Promise<ForumDiscussion | undefined> {
+    const [updated] = await db
+      .update(forumDiscussions)
+      .set({ status })
+      .where(eq(forumDiscussions.id, discussionId))
+      .returning();
+    return updated;
+  }
+
   async getResources(type?: string, category?: string, limit = 20): Promise<Resource[]> {
     const conditions = [];
     if (type) conditions.push(eq(resources.type, type));
@@ -931,15 +971,25 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  async getPodcastEpisodes(categoryIds?: string[], limit = 10): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]> {
+  async getPodcastEpisodes(categoryIds?: string[], limit = 10, userRole?: string): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]> {
     let episodes: PodcastEpisode[];
+    
+    // Admins and editors can see all episodes; regular users only see published
+    const canSeeAllStatuses = userRole === 'admin' || userRole === 'editor';
     
     if (categoryIds && categoryIds.length > 0) {
       const results = await db
         .selectDistinct({ episode: podcastEpisodes })
         .from(podcastEpisodes)
         .innerJoin(podcastCategories, eq(podcastCategories.podcastId, podcastEpisodes.id))
-        .where(inArray(podcastCategories.categoryId, categoryIds))
+        .where(
+          canSeeAllStatuses
+            ? inArray(podcastCategories.categoryId, categoryIds)
+            : and(
+                inArray(podcastCategories.categoryId, categoryIds),
+                eq(podcastEpisodes.status, 'published')
+              )
+        )
         .orderBy(desc(podcastEpisodes.publishedAt))
         .limit(limit);
       episodes = results.map(r => r.episode);
@@ -947,6 +997,7 @@ export class DatabaseStorage implements IStorage {
       episodes = await db
         .select()
         .from(podcastEpisodes)
+        .where(canSeeAllStatuses ? undefined : eq(podcastEpisodes.status, 'published'))
         .orderBy(desc(podcastEpisodes.publishedAt))
         .limit(limit);
     }
@@ -991,22 +1042,9 @@ export class DatabaseStorage implements IStorage {
 
   async createPodcastEpisode(episode: InsertPodcastEpisode, categoryIds: string[]): Promise<PodcastEpisode & { categories: NewsCategory[] }> {
     return await db.transaction(async (tx) => {
-      let legacyCategory = 'general';
-      if (categoryIds.length > 0) {
-        const firstCategory = await tx
-          .select()
-          .from(newsCategories)
-          .where(eq(newsCategories.id, categoryIds[0]))
-          .limit(1);
-        legacyCategory = firstCategory[0]?.slug || 'general';
-      }
-
       const [created] = await tx
         .insert(podcastEpisodes)
-        .values({
-          ...episode,
-          category: legacyCategory,
-        })
+        .values(episode)
         .returning();
 
       if (categoryIds.length > 0) {
@@ -1033,16 +1071,7 @@ export class DatabaseStorage implements IStorage {
 
   async updatePodcastEpisode(episodeId: string, updates: Partial<InsertPodcastEpisode>, categoryIds?: string[]): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined> {
     return await db.transaction(async (tx) => {
-      let updateData = { ...updates };
-      
       if (categoryIds && categoryIds.length > 0) {
-        const firstCategory = await tx
-          .select()
-          .from(newsCategories)
-          .where(eq(newsCategories.id, categoryIds[0]))
-          .limit(1);
-        updateData.category = firstCategory[0]?.slug || 'general';
-
         await tx
           .delete(podcastCategories)
           .where(eq(podcastCategories.podcastId, episodeId));
@@ -1057,7 +1086,7 @@ export class DatabaseStorage implements IStorage {
 
       const [updated] = await tx
         .update(podcastEpisodes)
-        .set(updateData)
+        .set(updates)
         .where(eq(podcastEpisodes.id, episodeId))
         .returning();
 
@@ -1088,6 +1117,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(podcastEpisodes.id, episodeId));
     
     return true;
+  }
+
+  async togglePodcastEpisodeStatus(episodeId: string, status: 'published' | 'draft'): Promise<PodcastEpisode | undefined> {
+    const [updated] = await db
+      .update(podcastEpisodes)
+      .set({ status })
+      .where(eq(podcastEpisodes.id, episodeId))
+      .returning();
+    return updated;
   }
 
   async getFeaturedPodcastEpisode(): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined> {

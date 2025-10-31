@@ -17,7 +17,9 @@ import {
   Award,
   Search,
   Edit2,
-  Trash2
+  Trash2,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,12 +62,34 @@ export default function Forums() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedDiscussion, setSelectedDiscussion] = useState<any>(null);
+  const userRole = (user as any)?.role;
+  const isEditorOrAdmin = userRole === 'editor' || userRole === 'admin';
   
   // Form state
   const [formData, setFormData] = useState({
     title: "",
     content: "",
     categoryId: "",
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ discussionId, newStatus }: { discussionId: string; newStatus: string }) => {
+      return await apiRequest(`/api/forum/discussions/${discussionId}/status`, 'PATCH', { status: newStatus });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/forum/discussions"] });
+      toast({
+        title: "Status updated",
+        description: `Discussion ${variables.newStatus === 'published' ? 'published' : 'set to draft'} successfully.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update discussion status.",
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: categories, isLoading: categoriesLoading } = useQuery({
@@ -383,7 +407,7 @@ export default function Forums() {
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-3 flex-wrap">
                             <h3 className="text-lg font-medium text-gray-900 dark:text-white line-clamp-1 hover:text-primary transition-colors" data-testid={`discussion-title-${discussion.id}`}>
                               {discussion.title}
                             </h3>
@@ -392,10 +416,43 @@ export default function Forums() {
                                 Pinned
                               </Badge>
                             )}
+                            {isEditorOrAdmin && (
+                              <Badge 
+                                variant={discussion.status === 'published' ? 'default' : 'outline'}
+                                className={discussion.status === 'published' ? 'bg-green-500 text-white' : 'border-amber-500 text-amber-600 dark:text-amber-400'}
+                                data-testid={`status-${discussion.id}`}
+                              >
+                                {discussion.status === 'published' ? 'Published' : 'Draft'}
+                              </Badge>
+                            )}
                           </div>
                           
-                          {isAdmin && (
+                          {isEditorOrAdmin && (
                             <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant={discussion.status === 'published' ? 'outline' : 'default'}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleStatusMutation.mutate({
+                                    discussionId: discussion.id,
+                                    newStatus: discussion.status === 'published' ? 'draft' : 'published'
+                                  });
+                                }}
+                                disabled={toggleStatusMutation.isPending}
+                                data-testid={`toggle-status-${discussion.id}`}
+                                className="flex items-center gap-1"
+                              >
+                                {discussion.status === 'published' ? (
+                                  <>
+                                    <XCircle className="h-4 w-4" />
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-4 w-4" />
+                                  </>
+                                )}
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"

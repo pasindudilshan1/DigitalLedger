@@ -1,5 +1,5 @@
 import { Layout } from "@/components/Layout";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +17,15 @@ import {
   Mic,
   Calendar,
   PlusCircle,
-  Pencil
+  Pencil,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface NewsCategory {
   id: string;
@@ -42,6 +46,29 @@ export default function Podcasts() {
   const [duration, setDuration] = useState(100);
   const { user } = useAuth();
   const userRole = (user as any)?.role;
+  const { toast } = useToast();
+  const isEditorOrAdmin = userRole === 'editor' || userRole === 'admin';
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ episodeId, newStatus }: { episodeId: string; newStatus: string }) => {
+      return await apiRequest(`/api/podcasts/${episodeId}/status`, 'PATCH', { status: newStatus });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/featured"] });
+      toast({
+        title: "Status updated",
+        description: `Episode ${variables.newStatus === 'published' ? 'published' : 'set to draft'} successfully.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update episode status.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: categoriesData = [] } = useQuery<NewsCategory[]>({
     queryKey: ["/api/news-categories", "active"],
@@ -175,6 +202,15 @@ export default function Podcasts() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-4 flex-wrap">
                     <Badge variant="default" data-testid="featured-badge">Featured Episode</Badge>
+                    {isEditorOrAdmin && (
+                      <Badge 
+                        variant={featuredEpisode.status === 'published' ? 'default' : 'outline'}
+                        className={featuredEpisode.status === 'published' ? 'bg-green-500 text-white' : 'border-amber-500 text-amber-600 dark:text-amber-400'}
+                        data-testid="status-featured"
+                      >
+                        {featuredEpisode.status === 'published' ? 'Published' : 'Draft'}
+                      </Badge>
+                    )}
                     <span className="text-gray-500 dark:text-gray-400 text-sm">
                       Episode {featuredEpisode.episodeNumber} • {formatDuration(featuredEpisode.duration || "45")}
                     </span>
@@ -237,7 +273,7 @@ export default function Podcasts() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400 mb-4">
                     <span className="flex items-center space-x-1">
                       <Calendar className="h-4 w-4" />
                       <span>Published {new Date(featuredEpisode.publishedAt).toLocaleDateString()}</span>
@@ -251,6 +287,36 @@ export default function Podcasts() {
                       <span>{featuredEpisode.likes || 0} likes</span>
                     </span>
                   </div>
+
+                  {isEditorOrAdmin && (
+                    <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <Button
+                        size="sm"
+                        variant={featuredEpisode.status === 'published' ? 'outline' : 'default'}
+                        onClick={() => {
+                          toggleStatusMutation.mutate({
+                            episodeId: featuredEpisode.id,
+                            newStatus: featuredEpisode.status === 'published' ? 'draft' : 'published'
+                          });
+                        }}
+                        disabled={toggleStatusMutation.isPending}
+                        data-testid="toggle-status-featured"
+                        className="flex items-center gap-1"
+                      >
+                        {featuredEpisode.status === 'published' ? (
+                          <>
+                            <XCircle className="h-4 w-4" />
+                            Unpublish
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            Publish
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -341,6 +407,15 @@ export default function Podcasts() {
                     <Badge variant="secondary" data-testid={`episode-number-${episode.id}`}>
                       Episode {episode.episodeNumber}
                     </Badge>
+                    {isEditorOrAdmin && (
+                      <Badge 
+                        variant={episode.status === 'published' ? 'default' : 'outline'}
+                        className={episode.status === 'published' ? 'bg-green-500 text-white' : 'border-amber-500 text-amber-600 dark:text-amber-400'}
+                        data-testid={`status-${episode.id}`}
+                      >
+                        {episode.status === 'published' ? 'Published' : 'Draft'}
+                      </Badge>
+                    )}
                     <span className="text-gray-500 dark:text-gray-400 text-sm">
                       {formatDuration(episode.duration || "30")}
                     </span>
@@ -384,7 +459,7 @@ export default function Podcasts() {
                     </div>
                   )}
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                       <span className="flex items-center space-x-1">
                         <Headphones className="h-4 w-4" />
@@ -413,6 +488,37 @@ export default function Podcasts() {
                       )}
                     </Button>
                   </div>
+
+                  {isEditorOrAdmin && (
+                    <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <Button
+                        size="sm"
+                        variant={episode.status === 'published' ? 'outline' : 'default'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleStatusMutation.mutate({
+                            episodeId: episode.id,
+                            newStatus: episode.status === 'published' ? 'draft' : 'published'
+                          });
+                        }}
+                        disabled={toggleStatusMutation.isPending}
+                        data-testid={`toggle-status-${episode.id}`}
+                        className="flex items-center gap-1"
+                      >
+                        {episode.status === 'published' ? (
+                          <>
+                            <XCircle className="h-4 w-4" />
+                            Unpublish
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            Publish
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

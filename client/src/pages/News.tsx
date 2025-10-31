@@ -1,13 +1,15 @@
 import { Layout } from "@/components/Layout";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Heart, MessageCircle, Share, Search, PlusCircle } from "lucide-react";
+import { Heart, MessageCircle, Share, Search, PlusCircle, CheckCircle, XCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface NewsCategory {
   id: string;
@@ -24,6 +26,28 @@ export default function News() {
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
   const userRole = (user as any)?.role;
+  const { toast } = useToast();
+  const isEditorOrAdmin = userRole === 'editor' || userRole === 'admin';
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ articleId, newStatus }: { articleId: string; newStatus: string }) => {
+      return await apiRequest(`/api/news/${articleId}/status`, 'PATCH', { status: newStatus });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+      toast({
+        title: "Status updated",
+        description: `Article ${variables.newStatus === 'published' ? 'published' : 'set to draft'} successfully.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update article status.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Fetch active categories
   const { data: categoriesData = [] } = useQuery<NewsCategory[]>({
@@ -160,16 +184,17 @@ export default function News() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8" data-testid="news-grid">
             {filteredNews.map((article: any) => (
-              <Link key={article.id} href={`/news/${article.id}`}>
-                <Card className="hover:shadow-lg transition-shadow duration-300 cursor-pointer" data-testid={`news-card-${article.id}`}>
-                <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                  <img 
-                    src={article.imageUrl || "https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"}
-                    alt={article.title}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                  />
-                </div>
+              <Card key={article.id} className="hover:shadow-lg transition-shadow duration-300" data-testid={`news-card-${article.id}`}>
+                <Link href={`/news/${article.id}`}>
+                  <div className="aspect-video w-full overflow-hidden rounded-t-lg cursor-pointer">
+                    <img 
+                      src={article.imageUrl || "https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"}
+                      alt={article.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                  </div>
+                </Link>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-2 mb-3 flex-wrap">
                     {article.categories && article.categories.length > 0 ? (
@@ -193,14 +218,25 @@ export default function News() {
                         General
                       </Badge>
                     )}
+                    {isEditorOrAdmin && (
+                      <Badge 
+                        variant={article.status === 'published' ? 'default' : 'outline'}
+                        className={article.status === 'published' ? 'bg-green-500 text-white' : 'border-amber-500 text-amber-600 dark:text-amber-400'}
+                        data-testid={`status-${article.id}`}
+                      >
+                        {article.status === 'published' ? 'Published' : 'Draft'}
+                      </Badge>
+                    )}
                     <span className="text-gray-500 dark:text-gray-400 text-sm" data-testid={`time-${article.id}`}>
                       {new Date(article.publishedAt).toLocaleDateString()}
                     </span>
                   </div>
                   
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2 hover:text-primary dark:hover:text-ai-teal transition-colors cursor-pointer" data-testid={`title-${article.id}`}>
-                    {article.title}
-                  </h3>
+                  <Link href={`/news/${article.id}`}>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2 hover:text-primary dark:hover:text-ai-teal transition-colors cursor-pointer" data-testid={`title-${article.id}`}>
+                      {article.title}
+                    </h3>
+                  </Link>
                   
                   <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3" data-testid={`excerpt-${article.id}`}>
                     {article.excerpt || article.content?.substring(0, 150) + '...'}
@@ -212,7 +248,7 @@ export default function News() {
                     </p>
                   )}
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                       <button 
                         className="flex items-center space-x-1 hover:text-red-500 transition-colors"
@@ -244,14 +280,46 @@ export default function News() {
                     </div>
                     
                     {article.sourceUrl && (
-                      <span className="text-sm font-medium text-primary dark:text-ai-teal">
-                        Read More →
-                      </span>
+                      <Link href={`/news/${article.id}`}>
+                        <span className="text-sm font-medium text-primary dark:text-ai-teal cursor-pointer">
+                          Read More →
+                        </span>
+                      </Link>
                     )}
                   </div>
+
+                  {isEditorOrAdmin && (
+                    <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <Button
+                        size="sm"
+                        variant={article.status === 'published' ? 'outline' : 'default'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleStatusMutation.mutate({
+                            articleId: article.id,
+                            newStatus: article.status === 'published' ? 'draft' : 'published'
+                          });
+                        }}
+                        disabled={toggleStatusMutation.isPending}
+                        data-testid={`toggle-status-${article.id}`}
+                        className="flex items-center gap-1"
+                      >
+                        {article.status === 'published' ? (
+                          <>
+                            <XCircle className="h-4 w-4" />
+                            Unpublish
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            Publish
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
                 </Card>
-              </Link>
             ))}
           </div>
         )}

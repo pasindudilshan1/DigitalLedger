@@ -353,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // News routes
-  app.get('/api/news', async (req, res) => {
+  app.get('/api/news', async (req: any, res) => {
     try {
       const { category, categories, limit } = req.query;
       // Support both single category (legacy) and multiple categories (new)
@@ -363,9 +363,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (category) {
         categoryIds = [category as string];
       }
+      // Pass user role to filter by status (admins/editors see all, regular users see only published)
+      const userRole = req.user?.role;
       const articles = await storage.getNewsArticles(
         categoryIds,
-        limit ? parseInt(limit as string) : undefined
+        limit ? parseInt(limit as string) : undefined,
+        userRole
       );
       res.json(articles);
     } catch (error) {
@@ -466,6 +469,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/news/:id/status', isEditorOrAdmin, async (req: any, res) => {
+    try {
+      const articleId = req.params.id;
+      const { status } = req.body;
+      if (!status || (status !== 'published' && status !== 'draft')) {
+        return res.status(400).json({ message: "Invalid status. Must be 'published' or 'draft'" });
+      }
+      const updatedArticle = await storage.toggleNewsArticleStatus(articleId, status);
+      if (!updatedArticle) {
+        return res.status(404).json({ message: "Article not found" });
+      }
+      res.json(updatedArticle);
+    } catch (error) {
+      console.error("Error toggling news article status:", error);
+      res.status(500).json({ message: "Failed to toggle news article status" });
+    }
+  });
+
   // Forum routes
   app.get('/api/forum/categories', async (req, res) => {
     try {
@@ -488,17 +509,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/forum/discussions', async (req, res) => {
+  app.get('/api/forum/discussions', async (req: any, res) => {
     try {
       const { categoryId, newsCategories, limit } = req.query;
       let newsCategoryIds: string[] | undefined;
       if (newsCategories) {
         newsCategoryIds = Array.isArray(newsCategories) ? newsCategories as string[] : [newsCategories as string];
       }
+      // Pass user role to filter by status
+      const userRole = req.user?.role;
       const discussions = await storage.getForumDiscussions(
         categoryId as string,
         newsCategoryIds,
-        limit ? parseInt(limit as string) : undefined
+        limit ? parseInt(limit as string) : undefined,
+        userRole
       );
       res.json(discussions);
     } catch (error) {
@@ -569,6 +593,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting forum discussion:", error);
       res.status(500).json({ message: "Failed to delete forum discussion" });
+    }
+  });
+
+  app.patch('/api/forum/discussions/:id/status', isEditorOrAdmin, async (req: any, res) => {
+    try {
+      const discussionId = req.params.id;
+      const { status } = req.body;
+      if (!status || (status !== 'published' && status !== 'draft')) {
+        return res.status(400).json({ message: "Invalid status. Must be 'published' or 'draft'" });
+      }
+      const updatedDiscussion = await storage.toggleForumDiscussionStatus(discussionId, status);
+      if (!updatedDiscussion) {
+        return res.status(404).json({ message: "Discussion not found" });
+      }
+      res.json(updatedDiscussion);
+    } catch (error) {
+      console.error("Error toggling forum discussion status:", error);
+      res.status(500).json({ message: "Failed to toggle forum discussion status" });
     }
   });
 
@@ -682,16 +724,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Podcast routes
-  app.get('/api/podcasts', async (req, res) => {
+  app.get('/api/podcasts', async (req: any, res) => {
     try {
       const { categories, limit } = req.query;
       let categoryIds: string[] | undefined;
       if (categories) {
         categoryIds = Array.isArray(categories) ? categories as string[] : [categories as string];
       }
+      // Pass user role to filter by status
+      const userRole = req.user?.role;
       const episodes = await storage.getPodcastEpisodes(
         categoryIds,
-        limit ? parseInt(limit as string) : undefined
+        limit ? parseInt(limit as string) : undefined,
+        userRole
       );
       res.json(episodes);
     } catch (error) {
@@ -762,6 +807,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting podcast episode:", error);
       res.status(500).json({ message: "Failed to delete podcast episode" });
+    }
+  });
+
+  app.patch('/api/podcasts/:id/status', isEditorOrAdmin, async (req: any, res) => {
+    try {
+      const episodeId = req.params.id;
+      const { status } = req.body;
+      if (!status || (status !== 'published' && status !== 'draft')) {
+        return res.status(400).json({ message: "Invalid status. Must be 'published' or 'draft'" });
+      }
+      const updatedEpisode = await storage.togglePodcastEpisodeStatus(episodeId, status);
+      if (!updatedEpisode) {
+        return res.status(404).json({ message: "Podcast episode not found" });
+      }
+      res.json(updatedEpisode);
+    } catch (error) {
+      console.error("Error toggling podcast episode status:", error);
+      res.status(500).json({ message: "Failed to toggle podcast episode status" });
     }
   });
 
