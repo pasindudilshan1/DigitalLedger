@@ -542,17 +542,23 @@ export default function Admin() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white" data-testid="text-admin-title">
               Content Control Panel
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Link href="/admin/users">
                 <Button variant="default" className="flex items-center gap-2" data-testid="button-user-management">
                   <Users className="h-4 w-4" />
-                  User Management
+                  Users
+                </Button>
+              </Link>
+              <Link href="/admin/categories">
+                <Button variant="default" className="flex items-center gap-2" data-testid="button-category-management">
+                  <FileText className="h-4 w-4" />
+                  Categories
                 </Button>
               </Link>
               <Link href="/admin/menu">
                 <Button variant="default" className="flex items-center gap-2" data-testid="button-menu-settings">
                   <Menu className="h-4 w-4" />
-                  Menu Settings
+                  Menu
                 </Button>
               </Link>
               <Button 
@@ -563,12 +569,12 @@ export default function Admin() {
                 data-testid="button-rebuild-database"
               >
                 <Upload className="h-4 w-4" />
-                {seedDatabaseMutation.isPending ? "Rebuilding..." : "Rebuild Database"}
+                {seedDatabaseMutation.isPending ? "Rebuilding..." : "Rebuild DB"}
               </Button>
               <Link href="/">
                 <Button variant="outline" className="flex items-center gap-2" data-testid="button-home">
                   <Home className="h-4 w-4" />
-                  Return to Home
+                  Home
                 </Button>
               </Link>
             </div>
