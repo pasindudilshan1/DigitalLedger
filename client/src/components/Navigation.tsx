@@ -42,9 +42,9 @@ export function Navigation() {
 
   const baseNavigation = [
     { name: "News", href: "/news" },
+    { name: "Podcasts", href: "/podcasts" },
     { name: "Forums", href: "/forums" },
     { name: "Resources", href: "/resources" },
-    { name: "Podcasts", href: "/podcasts" },
     { name: "Community", href: "/community" },
   ];
 
