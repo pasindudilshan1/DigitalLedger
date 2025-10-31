@@ -22,13 +22,16 @@ interface NewsCategory {
   id: string;
   name: string;
   slug: string;
+  description?: string;
+  icon?: string;
+  color?: string;
   isActive: boolean;
 }
 
 const articleFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Content is required"),
-  category: z.string().min(1, "Category is required"),
+  categoryIds: z.array(z.string()).min(1, "At least one category is required"),
   excerpt: z.string().optional(),
   sourceUrl: z.string().optional(),
   sourceName: z.string().optional(),
@@ -55,7 +58,7 @@ export default function AddNews() {
       title: "",
       content: "",
       excerpt: "",
-      category: "",
+      categoryIds: [],
       sourceUrl: "",
       sourceName: "",
       imageUrl: "",
@@ -210,31 +213,63 @@ export default function AddNews() {
                     )}
                   />
 
+                  <FormField
+                    control={articleForm.control}
+                    name="categoryIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categories</FormLabel>
+                        <FormControl>
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                              {newsCategories.map((category) => {
+                                const isSelected = field.value?.includes(category.id);
+                                const handleToggle = () => {
+                                  const newValue = isSelected
+                                    ? field.value?.filter(id => id !== category.id) || []
+                                    : [...(field.value || []), category.id];
+                                  field.onChange(newValue);
+                                };
+                                return (
+                                  <Badge
+                                    key={category.id}
+                                    variant={isSelected ? "default" : "outline"}
+                                    className="cursor-pointer hover:opacity-80 transition-opacity focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                                    style={isSelected ? { backgroundColor: category.color, color: '#fff' } : {}}
+                                    onClick={handleToggle}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        handleToggle();
+                                      }
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-pressed={isSelected}
+                                    aria-label={`${isSelected ? 'Deselect' : 'Select'} ${category.name} category`}
+                                    data-testid={`badge-category-${category.slug}`}
+                                  >
+                                    {category.name}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                            {field.value && field.value.length > 0 && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {field.value.length} {field.value.length === 1 ? 'category' : 'categories'} selected
+                              </p>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Select one or more categories that best describe this article.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={articleForm.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-article-category">
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {newsCategories.map((category) => (
-                                <SelectItem key={category.id} value={category.name}>
-                                  {category.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
                     <FormField
                       control={articleForm.control}

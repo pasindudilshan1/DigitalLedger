@@ -442,6 +442,21 @@ export default function Forums() {
                               {discussion.category.name}
                             </Badge>
                           )}
+                          {discussion.newsCategories && discussion.newsCategories.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {discussion.newsCategories.map((cat: any) => (
+                                <Badge 
+                                  key={cat.id}
+                                  variant="secondary"
+                                  className="text-xs"
+                                  style={{ backgroundColor: cat.color + '20', color: cat.color }}
+                                  data-testid={`news-category-${discussion.id}-${cat.slug}`}
+                                >
+                                  {cat.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

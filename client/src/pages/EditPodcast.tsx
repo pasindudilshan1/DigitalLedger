@@ -27,9 +27,20 @@ import { Upload, Mic, Image, ArrowLeft, Headphones, Loader2, Trash2 } from "luci
 import { Link, useLocation, useParams } from "wouter";
 import type { UploadResult } from "@uppy/core";
 
+interface NewsCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  isActive: boolean;
+}
+
 const podcastFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
+  categoryIds: z.array(z.string()).min(1, "At least one category is required"),
   episodeNumber: z.coerce.number().int().positive().optional(),
   audioUrl: z.string().optional(),
   imageUrl: z.string().optional(),
@@ -48,6 +59,11 @@ export default function EditPodcast() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
+  const { data: newsCategories = [] } = useQuery<NewsCategory[]>({
+    queryKey: ["/api/news-categories", "active"],
+    queryFn: () => fetch("/api/news-categories?activeOnly=true").then(res => res.json()),
+  });
+
   const { data: podcast, isLoading } = useQuery({
     queryKey: ["/api/podcasts", id],
     queryFn: () => fetch(`/api/podcasts/${id}`).then(res => res.json()),
@@ -58,6 +74,7 @@ export default function EditPodcast() {
     defaultValues: {
       title: "",
       description: "",
+      categoryIds: [],
       episodeNumber: undefined,
       audioUrl: "",
       imageUrl: "",
@@ -74,6 +91,7 @@ export default function EditPodcast() {
       podcastForm.reset({
         title: podcast.title || "",
         description: podcast.description || "",
+        categoryIds: podcast.categories?.map((cat: NewsCategory) => cat.id) || [],
         episodeNumber: podcast.episodeNumber || undefined,
         audioUrl: podcast.audioUrl || "",
         imageUrl: podcast.imageUrl || "",
@@ -257,6 +275,55 @@ export default function EditPodcast() {
                         <FormDescription>
                           A detailed description of the episode content.
                         </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={podcastForm.control}
+                    name="categoryIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categories</FormLabel>
+                        <FormControl>
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                              {newsCategories.map((category) => {
+                                const isSelected = field.value?.includes(category.id);
+                                const handleToggle = () => {
+                                  const newValue = isSelected
+                                    ? field.value?.filter(id => id !== category.id) || []
+                                    : [...(field.value || []), category.id];
+                                  field.onChange(newValue);
+                                };
+                                return (
+                                  <Badge
+                                    key={category.id}
+                                    variant={isSelected ? "default" : "outline"}
+                                    className="cursor-pointer hover:opacity-80 transition-opacity focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                                    style={isSelected ? { backgroundColor: category.color, color: '#fff' } : {}}
+                                    onClick={handleToggle}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        handleToggle();
+                                      }
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-pressed={isSelected}
+                                    aria-label={`${isSelected ? 'Deselect' : 'Select'} ${category.name} category`}
+                                    data-testid={`badge-category-${category.slug}`}
+                                  >
+                                    {category.name}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </FormControl>
+                        <FormDescription>Select one or more categories for this podcast episode.</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

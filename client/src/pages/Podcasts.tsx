@@ -23,7 +23,18 @@ import { Slider } from "@/components/ui/slider";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 
+interface NewsCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  isActive: boolean;
+}
+
 export default function Podcasts() {
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -32,15 +43,33 @@ export default function Podcasts() {
   const { user } = useAuth();
   const userRole = (user as any)?.role;
 
+  const { data: categoriesData = [] } = useQuery<NewsCategory[]>({
+    queryKey: ["/api/news-categories", "active"],
+    queryFn: () => fetch("/api/news-categories?activeOnly=true").then(res => res.json()),
+  });
+
   const { data: episodes, isLoading } = useQuery({
-    queryKey: ["/api/podcasts"],
-    queryFn: () => fetch("/api/podcasts?limit=50").then(res => res.json()),
+    queryKey: ["/api/podcasts", selectedCategories],
+    queryFn: () => {
+      const url = selectedCategories.length === 0
+        ? "/api/podcasts?limit=50" 
+        : `/api/podcasts?categoryIds=${selectedCategories.join(',')}&limit=50`;
+      return fetch(url).then(res => res.json());
+    },
   });
 
   const { data: featuredEpisode } = useQuery({
     queryKey: ["/api/podcasts/featured"],
     queryFn: () => fetch("/api/podcasts/featured").then(res => res.json()),
   });
+
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
 
   const filteredEpisodes = episodes?.filter((episode: any) =>
     episode.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -144,12 +173,25 @@ export default function Podcasts() {
                   className="w-full lg:w-80 h-64 object-cover rounded-lg"
                 />
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-3 mb-4 flex-wrap">
                     <Badge variant="default" data-testid="featured-badge">Featured Episode</Badge>
                     <span className="text-gray-500 dark:text-gray-400 text-sm">
                       Episode {featuredEpisode.episodeNumber} • {formatDuration(featuredEpisode.duration || "45")}
                     </span>
                   </div>
+                  {featuredEpisode.categories && featuredEpisode.categories.length > 0 && (
+                    <div className="flex items-center gap-2 mb-4 flex-wrap">
+                      {featuredEpisode.categories.map((cat: NewsCategory) => (
+                        <Badge 
+                          key={cat.id}
+                          style={{ backgroundColor: cat.color, color: '#fff' }}
+                          data-testid={`badge-category-${cat.slug}`}
+                        >
+                          {cat.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4" data-testid="featured-title">
                     {featuredEpisode.title}
                   </h2>
@@ -215,9 +257,35 @@ export default function Podcasts() {
           </Card>
         )}
 
-        {/* Search */}
-        <div className="flex justify-center mb-8">
-          <div className="relative w-full max-w-md">
+        {/* Filters and Search */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 space-y-4 lg:space-y-0">
+          {/* Category Filters */}
+          <div className="flex flex-wrap gap-2" data-testid="category-filters">
+            {categoriesData.map((category) => (
+              <Button
+                key={category.id}
+                variant={selectedCategories.includes(category.id) ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleCategory(category.id)}
+                data-testid={`filter-${category.slug}`}
+              >
+                {category.name}
+              </Button>
+            ))}
+            {selectedCategories.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedCategories([])}
+                data-testid="filter-clear"
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+
+          {/* Search */}
+          <div className="relative w-full lg:w-64">
             <Input
               type="search"
               placeholder="Search episodes..."
@@ -269,7 +337,7 @@ export default function Podcasts() {
                   />
                 </div>
                 <CardContent className="p-6">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
                     <Badge variant="secondary" data-testid={`episode-number-${episode.id}`}>
                       Episode {episode.episodeNumber}
                     </Badge>
@@ -277,6 +345,20 @@ export default function Podcasts() {
                       {formatDuration(episode.duration || "30")}
                     </span>
                   </div>
+                  
+                  {episode.categories && episode.categories.length > 0 && (
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      {episode.categories.map((cat: NewsCategory) => (
+                        <Badge 
+                          key={cat.id}
+                          style={{ backgroundColor: cat.color, color: '#fff' }}
+                          data-testid={`badge-category-${cat.slug}`}
+                        >
+                          {cat.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2" data-testid={`episode-title-${episode.id}`}>
                     {episode.title}

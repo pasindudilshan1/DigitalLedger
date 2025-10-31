@@ -20,7 +20,7 @@ interface NewsCategory {
 }
 
 export default function News() {
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
   const userRole = (user as any)?.role;
@@ -32,20 +32,22 @@ export default function News() {
   });
 
   const { data: news, isLoading } = useQuery({
-    queryKey: ["/api/news", selectedCategory],
+    queryKey: ["/api/news", selectedCategories],
     queryFn: () => {
-      const url = selectedCategory === "all" 
+      const url = selectedCategories.length === 0
         ? "/api/news?limit=50" 
-        : `/api/news?category=${selectedCategory}&limit=50`;
+        : `/api/news?categoryIds=${selectedCategories.join(',')}&limit=50`;
       return fetch(url).then(res => res.json());
     },
   });
 
-  // Build categories with "All" option
-  const categories = [
-    { id: "all", label: "All" },
-    ...categoriesData.map(cat => ({ id: cat.name, label: cat.name })),
-  ];
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
 
   const filteredNews = news?.filter((article: any) =>
     article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -111,17 +113,27 @@ export default function News() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 space-y-4 lg:space-y-0">
           {/* Category Filters */}
           <div className="flex flex-wrap gap-2" data-testid="category-filters">
-            {categories.map((category) => (
+            {categoriesData.map((category) => (
               <Button
                 key={category.id}
-                variant={selectedCategory === category.id ? "default" : "outline"}
+                variant={selectedCategories.includes(category.id) ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedCategory(category.id)}
-                data-testid={`filter-${category.id}`}
+                onClick={() => toggleCategory(category.id)}
+                data-testid={`filter-${category.slug}`}
               >
-                {category.label}
+                {category.name}
               </Button>
             ))}
+            {selectedCategories.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedCategories([])}
+                data-testid="filter-clear"
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
 
           {/* Search */}
@@ -159,14 +171,28 @@ export default function News() {
                   />
                 </div>
                 <CardContent className="p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Badge 
-                      variant="secondary" 
-                      className="capitalize"
-                      data-testid={`category-${article.id}`}
-                    >
-                      {article.category?.replace('-', ' ') || 'General'}
-                    </Badge>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    {article.categories && article.categories.length > 0 ? (
+                      article.categories.map((cat: NewsCategory) => (
+                        <Badge 
+                          key={cat.id}
+                          variant="secondary" 
+                          className="capitalize"
+                          style={{ backgroundColor: cat.color + '20', color: cat.color }}
+                          data-testid={`category-${article.id}-${cat.slug}`}
+                        >
+                          {cat.name}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge 
+                        variant="secondary" 
+                        className="capitalize"
+                        data-testid={`category-${article.id}`}
+                      >
+                        General
+                      </Badge>
+                    )}
                     <span className="text-gray-500 dark:text-gray-400 text-sm" data-testid={`time-${article.id}`}>
                       {new Date(article.publishedAt).toLocaleDateString()}
                     </span>
