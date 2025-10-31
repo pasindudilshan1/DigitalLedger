@@ -228,7 +228,7 @@ export default function Podcasts() {
                           className="flex items-center justify-center space-x-2"
                         >
                           <PlayCircle className="h-5 w-5" />
-                          <span>Watch on YouTube</span>
+                          <span>Listen Now</span>
                           <ExternalLink className="h-4 w-4" />
                         </a>
                       </Button>
