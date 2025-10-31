@@ -429,6 +429,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/news/:id', isEditorOrAdmin, async (req: any, res) => {
+    try {
+      const articleId = req.params.id;
+      // Extract categoryIds from request body (support both old and new format)
+      const { categoryIds, category, ...articleFields } = req.body;
+      const categoryIdsArray = categoryIds || (category ? [category] : undefined);
+      
+      const articleData = insertNewsArticleSchema.partial().parse(articleFields);
+      const updatedArticle = await storage.updateNewsArticle(articleId, articleData, categoryIdsArray);
+      if (!updatedArticle) {
+        return res.status(404).json({ message: "Article not found" });
+      }
+      res.json(updatedArticle);
+    } catch (error) {
+      console.error("Error updating news article:", error);
+      res.status(500).json({ message: "Failed to update news article" });
+    }
+  });
+
   app.post('/api/news/:id/like', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
