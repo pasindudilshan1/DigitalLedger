@@ -113,7 +113,7 @@ export default function Landing() {
                 Join Community
               </Button>
             </div>
-            <p className="text-blue-100 text-sm mt-4" data-testid="text-no-spam">
+            <p className="text-xl md:text-2xl text-blue-100 mt-4" data-testid="text-no-spam">
               No spam, get powerful insights!
             </p>
           </div>
