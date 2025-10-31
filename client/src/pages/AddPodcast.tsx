@@ -124,7 +124,7 @@ export default function AddPodcast() {
               Create Podcast Episode
             </h1>
             <p className="text-gray-600 dark:text-gray-300" data-testid="text-add-podcast-description">
-              Add a new episode to the Digital Ledger podcast hub.
+              Add a new episode to The Digital Ledger podcast hub.
             </p>
           </div>
 

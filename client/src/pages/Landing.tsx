@@ -104,7 +104,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-6xl font-bold mb-6" data-testid="hero-title">
-              Welcome to <span className="text-yellow-300">Digital Ledger</span>
+              Welcome to <span className="text-yellow-300">The Digital Ledger</span>
             </h1>
             <p className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto mb-8" data-testid="hero-subtitle">
               Join 10,000+ accounting professionals, auditors, and AI practitioners shaping the industry's digital transformation

@@ -99,7 +99,7 @@ export default function Podcasts() {
             <div className="flex-1"></div>
             <div className="flex-1 text-center">
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Digital Ledger Podcast Hub
+                The Digital Ledger Podcast Hub
               </h1>
               <p className="text-gray-600 dark:text-gray-300 text-lg max-w-3xl mx-auto">
                 Listen to expert interviews, industry insights, and practical discussions about the future of AI in accounting

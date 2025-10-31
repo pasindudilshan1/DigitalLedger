@@ -568,7 +568,7 @@ export default function Admin() {
             </div>
           </div>
           <p className="text-gray-600 dark:text-gray-300" data-testid="text-admin-description">
-            Create and manage articles and podcast episodes for the Digital Ledger community.
+            Create and manage articles and podcast episodes for The Digital Ledger community.
           </p>
         </div>
 
@@ -1181,7 +1181,7 @@ export default function Admin() {
                     Invite New User (Alternative)
                   </CardTitle>
                   <CardDescription data-testid="text-invite-form-description">
-                    Send an email invitation to add a user to the Digital Ledger community.
+                    Send an email invitation to add a user to The Digital Ledger community.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

@@ -129,7 +129,7 @@ export default function AddNews() {
               Create News Article
             </h1>
             <p className="text-gray-600 dark:text-gray-300" data-testid="text-add-news-description">
-              Add a new article to keep the Digital Ledger community updated on AI developments in accounting.
+              Add a new article to keep The Digital Ledger community updated on AI developments in accounting.
             </p>
           </div>
 
