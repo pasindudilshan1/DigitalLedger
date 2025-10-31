@@ -9,6 +9,7 @@ import {
   polls,
   userInteractions,
   userInvitations,
+  menuSettings,
   type User,
   type UpsertUser,
   type NewsArticle,
@@ -29,6 +30,9 @@ import {
   type InsertUserInteraction,
   type UserInvitation,
   type InsertUserInvitation,
+  type MenuSetting,
+  type InsertMenuSetting,
+  type UpdateMenuSetting,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, ilike } from "drizzle-orm";
@@ -110,6 +114,11 @@ export interface IStorage {
     podcastListeners: number;
     certificationsEarned: number;
   }>;
+  
+  // Menu settings operations
+  getMenuSettings(): Promise<MenuSetting[]>;
+  updateMenuSetting(menuKey: string, updates: UpdateMenuSetting): Promise<MenuSetting | undefined>;
+  initializeMenuSettings(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -774,6 +783,45 @@ export class DatabaseStorage implements IStorage {
       podcastListeners: Math.floor(memberCount.count * 0.7),
       certificationsEarned: Math.floor(memberCount.count * 0.04),
     };
+  }
+
+  async getMenuSettings(): Promise<MenuSetting[]> {
+    return await db
+      .select()
+      .from(menuSettings)
+      .orderBy(menuSettings.displayOrder);
+  }
+
+  async updateMenuSetting(menuKey: string, updates: UpdateMenuSetting): Promise<MenuSetting | undefined> {
+    const [updated] = await db
+      .update(menuSettings)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(menuSettings.menuKey, menuKey))
+      .returning();
+    return updated;
+  }
+
+  async initializeMenuSettings(): Promise<void> {
+    // Check if menu settings already exist
+    const existing = await db.select().from(menuSettings).limit(1);
+    if (existing.length > 0) {
+      return; // Already initialized
+    }
+
+    // Initialize default menu settings
+    const defaultMenus: InsertMenuSetting[] = [
+      { menuKey: 'news', menuLabel: 'News', isVisible: true, displayOrder: 1 },
+      { menuKey: 'podcasts', menuLabel: 'Podcasts', isVisible: true, displayOrder: 2 },
+      { menuKey: 'forums', menuLabel: 'Forums', isVisible: true, displayOrder: 3 },
+      { menuKey: 'resources', menuLabel: 'Resources', isVisible: true, displayOrder: 4 },
+      { menuKey: 'community', menuLabel: 'Community', isVisible: true, displayOrder: 5 },
+    ];
+
+    await db.insert(menuSettings).values(defaultMenus);
+    console.log('✓ Menu settings initialized');
   }
 }
 

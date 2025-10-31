@@ -262,6 +262,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Menu settings routes (admin only)
+  app.get('/api/menu-settings', async (req, res) => {
+    try {
+      const settings = await storage.getMenuSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching menu settings:", error);
+      res.status(500).json({ message: "Failed to fetch menu settings" });
+    }
+  });
+
+  app.patch('/api/admin/menu-settings/:menuKey', isAdmin, async (req: any, res) => {
+    try {
+      const { menuKey } = req.params;
+      const { isVisible } = req.body;
+      
+      const updated = await storage.updateMenuSetting(menuKey, { isVisible });
+      if (!updated) {
+        return res.status(404).json({ message: "Menu item not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating menu setting:", error);
+      res.status(500).json({ message: "Failed to update menu setting" });
+    }
+  });
+
   // News routes
   app.get('/api/news', async (req, res) => {
     try {

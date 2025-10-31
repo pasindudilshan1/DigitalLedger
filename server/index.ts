@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
 import { db } from "./db";
 import { users, newsArticles, podcastEpisodes, forumDiscussions } from "@shared/schema";
+import { storage } from "./storage";
 
 const app = express();
 app.use(express.json());

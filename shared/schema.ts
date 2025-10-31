@@ -55,6 +55,16 @@ export const userInvitations = pgTable("user_invitations", {
   revokedAt: timestamp("revoked_at"),
 });
 
+// Menu settings for admin control
+export const menuSettings = pgTable("menu_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  menuKey: varchar("menu_key").unique().notNull(), // news, podcasts, forums, resources, community
+  menuLabel: varchar("menu_label").notNull(), // Display name
+  isVisible: boolean("is_visible").default(true), // Whether menu item is visible
+  displayOrder: integer("display_order").default(0), // Order in menu
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // News articles
 export const newsArticles = pgTable("news_articles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -315,6 +325,15 @@ export const insertUserInvitationSchema = createInsertSchema(userInvitations).om
   revokedAt: true,
 });
 
+export const insertMenuSettingSchema = createInsertSchema(menuSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const updateMenuSettingSchema = z.object({
+  isVisible: z.boolean(),
+});
+
 // Admin user management schemas
 export const adminCreateUserSchema = z.object({
   email: z.string().email("Invalid email format"),
@@ -363,3 +382,6 @@ export type UserInteraction = typeof userInteractions.$inferSelect;
 export type InsertUserInteraction = z.infer<typeof insertUserInteractionSchema>;
 export type UserInvitation = typeof userInvitations.$inferSelect;
 export type InsertUserInvitation = z.infer<typeof insertUserInvitationSchema>;
+export type MenuSetting = typeof menuSettings.$inferSelect;
+export type InsertMenuSetting = z.infer<typeof insertMenuSettingSchema>;
+export type UpdateMenuSetting = z.infer<typeof updateMenuSettingSchema>;
