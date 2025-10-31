@@ -31,7 +31,8 @@ export function Navigation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      setLocation("/"); // Redirect to home page
+      queryClient.clear(); // Clear all cached data
+      setLocation("/login"); // Redirect to login page
     },
   });
 
