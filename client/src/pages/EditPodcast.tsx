@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { apiRequest } from "@/lib/queryClient";
 import { z } from "zod";
-import { Upload, Mic, Image, ArrowLeft, Headphones, Loader2, Trash2 } from "lucide-react";
+import { Save, Mic, Image, ArrowLeft, Headphones, Loader2, Trash2 } from "lucide-react";
 import { Link, useLocation, useParams } from "wouter";
 import type { UploadResult } from "@uppy/core";
 
@@ -382,18 +382,18 @@ export default function EditPodcast() {
                     name="audioUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Audio URL (Optional)</FormLabel>
+                        <FormLabel>YouTube Link (Optional)</FormLabel>
                         <FormControl>
                           <Input 
                             type="url" 
-                            placeholder="https://example.com/episode.mp3" 
+                            placeholder="https://www.youtube.com/watch?v=..." 
                             {...field}
                             value={field.value || ''}
-                            data-testid="input-podcast-audio-url"
+                            data-testid="input-podcast-youtube-url"
                           />
                         </FormControl>
                         <FormDescription>
-                          Link to the audio file hosted on your platform (Spotify, Apple Podcasts, etc.)
+                          Paste the YouTube video URL for this episode
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -571,7 +571,7 @@ export default function EditPodcast() {
                         className="flex items-center gap-2"
                         data-testid="button-update-podcast"
                       >
-                        <Upload className="h-4 w-4" />
+                        <Save className="h-4 w-4" />
                         {updatePodcastMutation.isPending ? "Updating..." : "Update Episode"}
                       </Button>
                     </div>

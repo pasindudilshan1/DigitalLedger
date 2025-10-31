@@ -297,18 +297,18 @@ export default function AddPodcast() {
                     name="audioUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Audio URL (Optional)</FormLabel>
+                        <FormLabel>YouTube Link (Optional)</FormLabel>
                         <FormControl>
                           <Input 
                             type="url" 
-                            placeholder="https://example.com/episode.mp3" 
+                            placeholder="https://www.youtube.com/watch?v=..." 
                             {...field}
                             value={field.value || ''}
-                            data-testid="input-podcast-audio-url"
+                            data-testid="input-podcast-youtube-url"
                           />
                         </FormControl>
                         <FormDescription>
-                          Link to the audio file hosted on your platform (Spotify, Apple Podcasts, etc.)
+                          Paste the YouTube video URL for this episode
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
