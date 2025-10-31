@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -37,6 +38,7 @@ const podcastFormSchema = z.object({
   hostName: z.string().optional(),
   guestName: z.string().optional(),
   guestTitle: z.string().optional(),
+  status: z.enum(['draft', 'published']).default('draft'),
 });
 
 type PodcastFormData = z.infer<typeof podcastFormSchema>;
@@ -65,6 +67,7 @@ export default function AddPodcast() {
       hostName: "",
       guestName: "",
       guestTitle: "",
+      status: "draft",
     },
   });
 
@@ -403,6 +406,35 @@ export default function AddPodcast() {
                       </Badge>
                     )}
                   </div>
+
+                  <FormField
+                    control={podcastForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Publication Status</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-podcast-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft" data-testid="option-status-draft">
+                              Draft - Save without publishing
+                            </SelectItem>
+                            <SelectItem value="published" data-testid="option-status-published">
+                              Published - Make visible to all users
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Draft episodes are only visible to editors and admins.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="flex justify-end gap-3 pt-4">
                     <Link href="/podcasts">

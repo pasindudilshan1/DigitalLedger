@@ -36,6 +36,7 @@ const articleFormSchema = z.object({
   sourceUrl: z.string().optional(),
   sourceName: z.string().optional(),
   imageUrl: z.string().optional(),
+  status: z.enum(['draft', 'published']).default('draft'),
 });
 
 type ArticleFormData = z.infer<typeof articleFormSchema>;
@@ -62,6 +63,7 @@ export default function AddNews() {
       sourceUrl: "",
       sourceName: "",
       imageUrl: "",
+      status: "draft",
     },
   });
 
@@ -334,6 +336,35 @@ export default function AddNews() {
                       </Badge>
                     )}
                   </div>
+
+                  <FormField
+                    control={articleForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Publication Status</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-article-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft" data-testid="option-status-draft">
+                              Draft - Save without publishing
+                            </SelectItem>
+                            <SelectItem value="published" data-testid="option-status-published">
+                              Published - Make visible to all users
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Draft articles are only visible to editors and admins.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="flex justify-end gap-3 pt-4">
                     <Link href="/news">
