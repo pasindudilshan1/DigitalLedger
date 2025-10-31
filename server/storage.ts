@@ -274,17 +274,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNewsArticles(category?: string, limit = 10): Promise<NewsArticle[]> {
-    const query = db
+    if (category) {
+      return await db
+        .select()
+        .from(newsArticles)
+        .where(eq(newsArticles.category, category))
+        .orderBy(desc(newsArticles.publishedAt))
+        .limit(limit);
+    }
+    
+    return await db
       .select()
       .from(newsArticles)
       .orderBy(desc(newsArticles.publishedAt))
       .limit(limit);
-    
-    if (category) {
-      query.where(eq(newsArticles.category, category));
-    }
-    
-    return await query;
   }
 
   async getNewsArticle(id: string): Promise<NewsArticle | undefined> {

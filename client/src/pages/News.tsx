@@ -27,10 +27,10 @@ export default function News() {
 
   const categories = [
     { id: "all", label: "All" },
-    { id: "automation", label: "Automation" },
-    { id: "fraud-detection", label: "Fraud Detection" },
-    { id: "regulatory", label: "Regulatory" },
-    { id: "generative-ai", label: "Generative AI" },
+    { id: "Automation", label: "Automation" },
+    { id: "Fraud Detection", label: "Fraud Detection" },
+    { id: "Regulatory", label: "Regulatory" },
+    { id: "Generative AI", label: "Generative AI" },
   ];
 
   const filteredNews = news?.filter((article: any) =>
