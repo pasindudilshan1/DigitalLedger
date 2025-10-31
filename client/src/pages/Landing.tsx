@@ -27,12 +27,6 @@ export default function Landing() {
     queryKey: ["/api/podcasts"],
     queryFn: () => fetch("/api/podcasts?limit=3").then(res => res.json()),
   });
-  const stats = [
-    { value: "12,847", label: "Active Members" },
-    { value: "2,341", label: "Expert Discussions" },
-    { value: "156", label: "Podcast Episodes" },
-    { value: "843", label: "Resources Shared" },
-  ];
 
   const newsArticles = [
     {
@@ -119,16 +113,6 @@ export default function Landing() {
                 Join Community
               </Button>
             </div>
-          </div>
-          
-          {/* Community Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center" data-testid={`stat-${index}`}>
-                <div className="text-3xl md:text-4xl font-bold mb-2">{stat.value}</div>
-                <div className="text-blue-200">{stat.label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
