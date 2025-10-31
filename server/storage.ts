@@ -2,6 +2,9 @@ import {
   users,
   newsCategories,
   newsArticles,
+  articleCategories,
+  podcastCategories,
+  discussionNewsCategories,
   forumCategories,
   forumDiscussions,
   forumReplies,
@@ -17,6 +20,12 @@ import {
   type InsertNewsCategory,
   type NewsArticle,
   type InsertNewsArticle,
+  type ArticleCategory,
+  type InsertArticleCategory,
+  type PodcastCategory,
+  type InsertPodcastCategory,
+  type DiscussionNewsCategory,
+  type InsertDiscussionNewsCategory,
   type ForumCategory,
   type InsertForumCategory,
   type ForumDiscussion,
@@ -38,7 +47,7 @@ import {
   type UpdateMenuSetting,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, or, ilike } from "drizzle-orm";
+import { eq, desc, sql, and, or, ilike, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -70,10 +79,10 @@ export interface IStorage {
   initializeNewsCategories(): Promise<void>;
   
   // News operations
-  getNewsArticles(category?: string, limit?: number): Promise<NewsArticle[]>;
-  getNewsArticle(id: string): Promise<NewsArticle | undefined>;
-  createNewsArticle(article: InsertNewsArticle): Promise<NewsArticle>;
-  updateNewsArticle(articleId: string, updates: Partial<InsertNewsArticle>): Promise<NewsArticle | undefined>;
+  getNewsArticles(categoryIds?: string[], limit?: number): Promise<(NewsArticle & { categories: NewsCategory[] })[]>;
+  getNewsArticle(id: string): Promise<(NewsArticle & { categories: NewsCategory[] }) | undefined>;
+  createNewsArticle(article: InsertNewsArticle, categoryIds: string[]): Promise<NewsArticle & { categories: NewsCategory[] }>;
+  updateNewsArticle(articleId: string, updates: Partial<InsertNewsArticle>, categoryIds?: string[]): Promise<(NewsArticle & { categories: NewsCategory[] }) | undefined>;
   deleteNewsArticle(articleId: string): Promise<boolean>;
   archiveNewsArticle(articleId: string): Promise<NewsArticle | undefined>;
   likeNewsArticle(articleId: string, userId: string): Promise<void>;
@@ -81,10 +90,10 @@ export interface IStorage {
   // Forum operations
   getForumCategories(): Promise<ForumCategory[]>;
   createForumCategory(category: InsertForumCategory): Promise<ForumCategory>;
-  getForumDiscussions(categoryId?: string, limit?: number): Promise<(ForumDiscussion & { author: User; category: ForumCategory })[]>;
-  createForumDiscussion(discussion: InsertForumDiscussion): Promise<ForumDiscussion>;
-  getForumDiscussion(id: string): Promise<(ForumDiscussion & { author: User; category: ForumCategory; replies: (ForumReply & { author: User })[] }) | undefined>;
-  updateForumDiscussion(discussionId: string, updates: Partial<InsertForumDiscussion>): Promise<ForumDiscussion | undefined>;
+  getForumDiscussions(categoryId?: string, newsCategoryIds?: string[], limit?: number): Promise<(ForumDiscussion & { author: User; category: ForumCategory; newsCategories: NewsCategory[] })[]>;
+  createForumDiscussion(discussion: InsertForumDiscussion, newsCategoryIds?: string[]): Promise<ForumDiscussion & { newsCategories: NewsCategory[] }>;
+  getForumDiscussion(id: string): Promise<(ForumDiscussion & { author: User; category: ForumCategory; newsCategories: NewsCategory[]; replies: (ForumReply & { author: User })[] }) | undefined>;
+  updateForumDiscussion(discussionId: string, updates: Partial<InsertForumDiscussion>, newsCategoryIds?: string[]): Promise<(ForumDiscussion & { newsCategories: NewsCategory[] }) | undefined>;
   deleteForumDiscussion(discussionId: string): Promise<boolean>;
   createForumReply(reply: InsertForumReply): Promise<ForumReply>;
   likeForumDiscussion(discussionId: string, userId: string): Promise<void>;
@@ -98,12 +107,12 @@ export interface IStorage {
   searchResources(query: string): Promise<Resource[]>;
   
   // Podcast operations
-  getPodcastEpisodes(limit?: number): Promise<PodcastEpisode[]>;
-  getPodcastEpisode(id: string): Promise<PodcastEpisode | undefined>;
-  createPodcastEpisode(episode: InsertPodcastEpisode): Promise<PodcastEpisode>;
-  updatePodcastEpisode(episodeId: string, updates: Partial<InsertPodcastEpisode>): Promise<PodcastEpisode | undefined>;
+  getPodcastEpisodes(categoryIds?: string[], limit?: number): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]>;
+  getPodcastEpisode(id: string): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined>;
+  createPodcastEpisode(episode: InsertPodcastEpisode, categoryIds: string[]): Promise<PodcastEpisode & { categories: NewsCategory[] }>;
+  updatePodcastEpisode(episodeId: string, updates: Partial<InsertPodcastEpisode>, categoryIds?: string[]): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined>;
   deletePodcastEpisode(episodeId: string): Promise<boolean>;
-  getFeaturedPodcastEpisode(): Promise<PodcastEpisode | undefined>;
+  getFeaturedPodcastEpisode(): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined>;
   
   // Poll operations
   getActivePolls(): Promise<Poll[]>;
@@ -384,46 +393,149 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getNewsArticles(category?: string, limit = 10): Promise<NewsArticle[]> {
-    if (category) {
-      return await db
+  async getNewsArticles(categoryIds?: string[], limit = 10): Promise<(NewsArticle & { categories: NewsCategory[] })[]> {
+    let articles: NewsArticle[];
+    
+    if (categoryIds && categoryIds.length > 0) {
+      const results = await db
+        .selectDistinct({ article: newsArticles })
+        .from(newsArticles)
+        .innerJoin(articleCategories, eq(articleCategories.articleId, newsArticles.id))
+        .where(inArray(articleCategories.categoryId, categoryIds))
+        .orderBy(desc(newsArticles.publishedAt))
+        .limit(limit);
+      articles = results.map(r => r.article);
+    } else {
+      articles = await db
         .select()
         .from(newsArticles)
-        .where(eq(newsArticles.category, category))
         .orderBy(desc(newsArticles.publishedAt))
         .limit(limit);
     }
-    
-    return await db
-      .select()
-      .from(newsArticles)
-      .orderBy(desc(newsArticles.publishedAt))
-      .limit(limit);
+
+    const articlesWithCategories = await Promise.all(
+      articles.map(async (article) => {
+        const categoryResults = await db
+          .select({ category: newsCategories })
+          .from(articleCategories)
+          .innerJoin(newsCategories, eq(articleCategories.categoryId, newsCategories.id))
+          .where(eq(articleCategories.articleId, article.id));
+
+        return {
+          ...article,
+          categories: categoryResults.map(r => r.category),
+        };
+      })
+    );
+
+    return articlesWithCategories;
   }
 
-  async getNewsArticle(id: string): Promise<NewsArticle | undefined> {
+  async getNewsArticle(id: string): Promise<(NewsArticle & { categories: NewsCategory[] }) | undefined> {
     const [article] = await db
       .select()
       .from(newsArticles)
       .where(eq(newsArticles.id, id));
-    return article;
+
+    if (!article) return undefined;
+
+    const categoryResults = await db
+      .select({ category: newsCategories })
+      .from(articleCategories)
+      .innerJoin(newsCategories, eq(articleCategories.categoryId, newsCategories.id))
+      .where(eq(articleCategories.articleId, article.id));
+
+    return {
+      ...article,
+      categories: categoryResults.map(r => r.category),
+    };
   }
 
-  async createNewsArticle(article: InsertNewsArticle): Promise<NewsArticle> {
-    const [created] = await db
-      .insert(newsArticles)
-      .values(article)
-      .returning();
-    return created;
+  async createNewsArticle(article: InsertNewsArticle, categoryIds: string[]): Promise<NewsArticle & { categories: NewsCategory[] }> {
+    return await db.transaction(async (tx) => {
+      let legacyCategory = 'general';
+      if (categoryIds.length > 0) {
+        const firstCategory = await tx
+          .select()
+          .from(newsCategories)
+          .where(eq(newsCategories.id, categoryIds[0]))
+          .limit(1);
+        legacyCategory = firstCategory[0]?.slug || 'general';
+      }
+
+      const [created] = await tx
+        .insert(newsArticles)
+        .values({
+          ...article,
+          category: legacyCategory,
+        })
+        .returning();
+
+      if (categoryIds.length > 0) {
+        await tx.insert(articleCategories).values(
+          categoryIds.map(categoryId => ({
+            articleId: created.id,
+            categoryId,
+          }))
+        );
+      }
+
+      const categoryResults = await tx
+        .select({ category: newsCategories })
+        .from(articleCategories)
+        .innerJoin(newsCategories, eq(articleCategories.categoryId, newsCategories.id))
+        .where(eq(articleCategories.articleId, created.id));
+
+      return {
+        ...created,
+        categories: categoryResults.map(r => r.category),
+      };
+    });
   }
 
-  async updateNewsArticle(articleId: string, updates: Partial<InsertNewsArticle>): Promise<NewsArticle | undefined> {
-    const [updated] = await db
-      .update(newsArticles)
-      .set(updates)
-      .where(eq(newsArticles.id, articleId))
-      .returning();
-    return updated;
+  async updateNewsArticle(articleId: string, updates: Partial<InsertNewsArticle>, categoryIds?: string[]): Promise<(NewsArticle & { categories: NewsCategory[] }) | undefined> {
+    return await db.transaction(async (tx) => {
+      let updateData = { ...updates };
+      
+      if (categoryIds && categoryIds.length > 0) {
+        const firstCategory = await tx
+          .select()
+          .from(newsCategories)
+          .where(eq(newsCategories.id, categoryIds[0]))
+          .limit(1);
+        updateData.category = firstCategory[0]?.slug || 'general';
+
+        await tx
+          .delete(articleCategories)
+          .where(eq(articleCategories.articleId, articleId));
+
+        await tx.insert(articleCategories).values(
+          categoryIds.map(categoryId => ({
+            articleId,
+            categoryId,
+          }))
+        );
+      }
+
+      const [updated] = await tx
+        .update(newsArticles)
+        .set(updateData)
+        .where(eq(newsArticles.id, articleId))
+        .returning();
+
+      if (!updated) return undefined;
+
+      const categoryResults = await tx
+        .select({ category: newsCategories })
+        .from(articleCategories)
+        .innerJoin(newsCategories, eq(articleCategories.categoryId, newsCategories.id))
+        .where(eq(articleCategories.articleId, updated.id));
+
+      return {
+        ...updated,
+        categories: categoryResults.map(r => r.category),
+      };
+    });
   }
 
   async deleteNewsArticle(articleId: string): Promise<boolean> {
@@ -477,7 +589,22 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getForumDiscussions(categoryId?: string, limit = 20): Promise<(ForumDiscussion & { author: User; category: ForumCategory })[]> {
+  async getForumDiscussions(categoryId?: string, newsCategoryIds?: string[], limit = 20): Promise<(ForumDiscussion & { author: User; category: ForumCategory; newsCategories: NewsCategory[] })[]> {
+    let discussionIds: string[] = [];
+    
+    if (newsCategoryIds && newsCategoryIds.length > 0) {
+      const distinctResults = await db
+        .selectDistinct({ id: forumDiscussions.id })
+        .from(forumDiscussions)
+        .innerJoin(discussionNewsCategories, eq(discussionNewsCategories.discussionId, forumDiscussions.id))
+        .where(inArray(discussionNewsCategories.categoryId, newsCategoryIds));
+      discussionIds = distinctResults.map(r => r.id);
+      
+      if (discussionIds.length === 0) {
+        return [];
+      }
+    }
+    
     let query = db
       .select()
       .from(forumDiscussions)
@@ -485,37 +612,82 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(forumCategories, eq(forumDiscussions.categoryId, forumCategories.id))
       .orderBy(desc(forumDiscussions.lastReplyAt), desc(forumDiscussions.createdAt));
     
-    if (categoryId) {
+    if (categoryId && newsCategoryIds && newsCategoryIds.length > 0) {
+      query = query.where(and(
+        eq(forumDiscussions.categoryId, categoryId),
+        inArray(forumDiscussions.id, discussionIds)
+      )) as any;
+    } else if (categoryId) {
       query = query.where(eq(forumDiscussions.categoryId, categoryId)) as any;
+    } else if (newsCategoryIds && newsCategoryIds.length > 0) {
+      query = query.where(inArray(forumDiscussions.id, discussionIds)) as any;
     }
     
     const results = await query.limit(limit);
-    return results.map(row => ({
+    const discussions = results.map(row => ({
       ...row.forum_discussions,
       author: row.users!,
       category: row.forum_categories!,
     }));
-  }
 
-  async createForumDiscussion(discussion: InsertForumDiscussion): Promise<ForumDiscussion> {
-    const [created] = await db
-      .insert(forumDiscussions)
-      .values({
-        ...discussion,
-        lastReplyAt: new Date(),
+    const discussionsWithNewsCategories = await Promise.all(
+      discussions.map(async (discussion) => {
+        const categoryResults = await db
+          .select({ category: newsCategories })
+          .from(discussionNewsCategories)
+          .innerJoin(newsCategories, eq(discussionNewsCategories.categoryId, newsCategories.id))
+          .where(eq(discussionNewsCategories.discussionId, discussion.id));
+
+        return {
+          ...discussion,
+          newsCategories: categoryResults.map(r => r.category),
+        };
       })
-      .returning();
-    
-    // Update category discussion count
-    await db
-      .update(forumCategories)
-      .set({ discussionCount: sql`${forumCategories.discussionCount} + 1` })
-      .where(eq(forumCategories.id, discussion.categoryId!));
-    
-    return created;
+    );
+
+    return discussionsWithNewsCategories;
   }
 
-  async getForumDiscussion(id: string): Promise<(ForumDiscussion & { author: User; category: ForumCategory; replies: (ForumReply & { author: User })[] }) | undefined> {
+  async createForumDiscussion(discussion: InsertForumDiscussion, newsCategoryIds?: string[]): Promise<ForumDiscussion & { newsCategories: NewsCategory[] }> {
+    return await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(forumDiscussions)
+        .values({
+          ...discussion,
+          lastReplyAt: new Date(),
+        })
+        .returning();
+      
+      if (discussion.categoryId) {
+        await tx
+          .update(forumCategories)
+          .set({ discussionCount: sql`${forumCategories.discussionCount} + 1` })
+          .where(eq(forumCategories.id, discussion.categoryId));
+      }
+
+      if (newsCategoryIds && newsCategoryIds.length > 0) {
+        await tx.insert(discussionNewsCategories).values(
+          newsCategoryIds.map(categoryId => ({
+            discussionId: created.id,
+            categoryId,
+          }))
+        );
+      }
+
+      const categoryResults = await tx
+        .select({ category: newsCategories })
+        .from(discussionNewsCategories)
+        .innerJoin(newsCategories, eq(discussionNewsCategories.categoryId, newsCategories.id))
+        .where(eq(discussionNewsCategories.discussionId, created.id));
+
+      return {
+        ...created,
+        newsCategories: categoryResults.map(r => r.category),
+      };
+    });
+  }
+
+  async getForumDiscussion(id: string): Promise<(ForumDiscussion & { author: User; category: ForumCategory; newsCategories: NewsCategory[]; replies: (ForumReply & { author: User })[] }) | undefined> {
     const [discussion] = await db
       .select()
       .from(forumDiscussions)
@@ -531,11 +703,18 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(forumReplies.authorId, users.id))
       .where(eq(forumReplies.discussionId, id))
       .orderBy(forumReplies.createdAt);
+
+    const categoryResults = await db
+      .select({ category: newsCategories })
+      .from(discussionNewsCategories)
+      .innerJoin(newsCategories, eq(discussionNewsCategories.categoryId, newsCategories.id))
+      .where(eq(discussionNewsCategories.discussionId, id));
     
     return {
       ...discussion.forum_discussions,
       author: discussion.users!,
       category: discussion.forum_categories!,
+      newsCategories: categoryResults.map(r => r.category),
       replies: replies.map(row => ({
         ...row.forum_replies,
         author: row.users!,
@@ -609,13 +788,40 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateForumDiscussion(discussionId: string, updates: Partial<InsertForumDiscussion>): Promise<ForumDiscussion | undefined> {
-    const [updated] = await db
-      .update(forumDiscussions)
-      .set(updates)
-      .where(eq(forumDiscussions.id, discussionId))
-      .returning();
-    return updated;
+  async updateForumDiscussion(discussionId: string, updates: Partial<InsertForumDiscussion>, newsCategoryIds?: string[]): Promise<(ForumDiscussion & { newsCategories: NewsCategory[] }) | undefined> {
+    return await db.transaction(async (tx) => {
+      if (newsCategoryIds && newsCategoryIds.length > 0) {
+        await tx
+          .delete(discussionNewsCategories)
+          .where(eq(discussionNewsCategories.discussionId, discussionId));
+
+        await tx.insert(discussionNewsCategories).values(
+          newsCategoryIds.map(categoryId => ({
+            discussionId,
+            categoryId,
+          }))
+        );
+      }
+
+      const [updated] = await tx
+        .update(forumDiscussions)
+        .set(updates)
+        .where(eq(forumDiscussions.id, discussionId))
+        .returning();
+
+      if (!updated) return undefined;
+
+      const categoryResults = await tx
+        .select({ category: newsCategories })
+        .from(discussionNewsCategories)
+        .innerJoin(newsCategories, eq(discussionNewsCategories.categoryId, newsCategories.id))
+        .where(eq(discussionNewsCategories.discussionId, updated.id));
+
+      return {
+        ...updated,
+        newsCategories: categoryResults.map(r => r.category),
+      };
+    });
   }
 
   async deleteForumDiscussion(discussionId: string): Promise<boolean> {
@@ -716,37 +922,127 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  async getPodcastEpisodes(limit = 10): Promise<PodcastEpisode[]> {
-    return await db
-      .select()
-      .from(podcastEpisodes)
-      .orderBy(desc(podcastEpisodes.publishedAt))
-      .limit(limit);
+  async getPodcastEpisodes(categoryIds?: string[], limit = 10): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]> {
+    let episodes: PodcastEpisode[];
+    
+    if (categoryIds && categoryIds.length > 0) {
+      const results = await db
+        .selectDistinct({ episode: podcastEpisodes })
+        .from(podcastEpisodes)
+        .innerJoin(podcastCategories, eq(podcastCategories.podcastId, podcastEpisodes.id))
+        .where(inArray(podcastCategories.categoryId, categoryIds))
+        .orderBy(desc(podcastEpisodes.publishedAt))
+        .limit(limit);
+      episodes = results.map(r => r.episode);
+    } else {
+      episodes = await db
+        .select()
+        .from(podcastEpisodes)
+        .orderBy(desc(podcastEpisodes.publishedAt))
+        .limit(limit);
+    }
+
+    const episodesWithCategories = await Promise.all(
+      episodes.map(async (episode) => {
+        const categoryResults = await db
+          .select({ category: newsCategories })
+          .from(podcastCategories)
+          .innerJoin(newsCategories, eq(podcastCategories.categoryId, newsCategories.id))
+          .where(eq(podcastCategories.podcastId, episode.id));
+
+        return {
+          ...episode,
+          categories: categoryResults.map(r => r.category),
+        };
+      })
+    );
+
+    return episodesWithCategories;
   }
 
-  async getPodcastEpisode(id: string): Promise<PodcastEpisode | undefined> {
+  async getPodcastEpisode(id: string): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined> {
     const [episode] = await db
       .select()
       .from(podcastEpisodes)
       .where(eq(podcastEpisodes.id, id));
-    return episode;
+
+    if (!episode) return undefined;
+
+    const categoryResults = await db
+      .select({ category: newsCategories })
+      .from(podcastCategories)
+      .innerJoin(newsCategories, eq(podcastCategories.categoryId, newsCategories.id))
+      .where(eq(podcastCategories.podcastId, episode.id));
+
+    return {
+      ...episode,
+      categories: categoryResults.map(r => r.category),
+    };
   }
 
-  async createPodcastEpisode(episode: InsertPodcastEpisode): Promise<PodcastEpisode> {
-    const [created] = await db
-      .insert(podcastEpisodes)
-      .values(episode)
-      .returning();
-    return created;
+  async createPodcastEpisode(episode: InsertPodcastEpisode, categoryIds: string[]): Promise<PodcastEpisode & { categories: NewsCategory[] }> {
+    return await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(podcastEpisodes)
+        .values(episode)
+        .returning();
+
+      if (categoryIds.length > 0) {
+        await tx.insert(podcastCategories).values(
+          categoryIds.map(categoryId => ({
+            podcastId: created.id,
+            categoryId,
+          }))
+        );
+      }
+
+      const categoryResults = await tx
+        .select({ category: newsCategories })
+        .from(podcastCategories)
+        .innerJoin(newsCategories, eq(podcastCategories.categoryId, newsCategories.id))
+        .where(eq(podcastCategories.podcastId, created.id));
+
+      return {
+        ...created,
+        categories: categoryResults.map(r => r.category),
+      };
+    });
   }
 
-  async updatePodcastEpisode(episodeId: string, updates: Partial<InsertPodcastEpisode>): Promise<PodcastEpisode | undefined> {
-    const [updated] = await db
-      .update(podcastEpisodes)
-      .set(updates)
-      .where(eq(podcastEpisodes.id, episodeId))
-      .returning();
-    return updated;
+  async updatePodcastEpisode(episodeId: string, updates: Partial<InsertPodcastEpisode>, categoryIds?: string[]): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined> {
+    return await db.transaction(async (tx) => {
+      if (categoryIds && categoryIds.length > 0) {
+        await tx
+          .delete(podcastCategories)
+          .where(eq(podcastCategories.podcastId, episodeId));
+
+        await tx.insert(podcastCategories).values(
+          categoryIds.map(categoryId => ({
+            podcastId: episodeId,
+            categoryId,
+          }))
+        );
+      }
+
+      const [updated] = await tx
+        .update(podcastEpisodes)
+        .set(updates)
+        .where(eq(podcastEpisodes.id, episodeId))
+        .returning();
+
+      if (!updated) return undefined;
+
+      const categoryResults = await tx
+        .select({ category: newsCategories })
+        .from(podcastCategories)
+        .innerJoin(newsCategories, eq(podcastCategories.categoryId, newsCategories.id))
+        .where(eq(podcastCategories.podcastId, updated.id));
+
+      return {
+        ...updated,
+        categories: categoryResults.map(r => r.category),
+      };
+    });
   }
 
   async deletePodcastEpisode(episodeId: string): Promise<boolean> {
@@ -763,13 +1059,25 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  async getFeaturedPodcastEpisode(): Promise<PodcastEpisode | undefined> {
+  async getFeaturedPodcastEpisode(): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined> {
     const [episode] = await db
       .select()
       .from(podcastEpisodes)
       .orderBy(desc(podcastEpisodes.publishedAt))
       .limit(1);
-    return episode;
+
+    if (!episode) return undefined;
+
+    const categoryResults = await db
+      .select({ category: newsCategories })
+      .from(podcastCategories)
+      .innerJoin(newsCategories, eq(podcastCategories.categoryId, newsCategories.id))
+      .where(eq(podcastCategories.podcastId, episode.id));
+
+    return {
+      ...episode,
+      categories: categoryResults.map(r => r.category),
+    };
   }
 
   async getActivePolls(): Promise<Poll[]> {
