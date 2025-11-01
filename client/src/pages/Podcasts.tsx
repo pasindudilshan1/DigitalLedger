@@ -135,7 +135,7 @@ export default function Podcasts() {
                 The Digital Ledger Podcast Hub
               </h1>
               <p className="text-gray-600 dark:text-gray-300 text-lg max-w-3xl mx-auto">
-                Listen to expert interviews, industry insights, and practical discussions about the future of AI in accounting
+                Listen to expert interviews, industry insights, and practical discussions about the future of Corporate Finance and Accounting
               </p>
             </div>
             <div className="flex-1 flex justify-end">
