@@ -28,41 +28,10 @@ export default function Landing() {
     queryFn: () => fetch("/api/podcasts?limit=3").then(res => res.json()),
   });
 
-  const newsArticles = [
-    {
-      id: "1",
-      title: "How Machine Learning is Revolutionizing Audit Procedures in 2024",
-      excerpt: "New AI-powered audit tools are showing 94% accuracy in detecting financial anomalies, transforming traditional audit methodologies across major accounting firms.",
-      category: "Automation",
-      timeAgo: "2 hours ago",
-      likes: 47,
-      comments: 12,
-      shares: 8,
-      imageUrl: "https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400",
-    },
-    {
-      id: "2",
-      title: "New FASB Guidelines for AI-Generated Financial Reports",
-      excerpt: "The Financial Accounting Standards Board releases new guidance on transparency requirements for AI-assisted financial reporting and disclosure obligations.",
-      category: "Regulatory",
-      timeAgo: "5 hours ago",
-      likes: 73,
-      comments: 31,
-      shares: 15,
-      imageUrl: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400",
-    },
-    {
-      id: "3",
-      title: "AI Fraud Detection Prevents $2.3B in Losses for Fortune 500 Companies",
-      excerpt: "Latest industry report shows advanced AI algorithms successfully identified and prevented fraudulent transactions with 99.2% accuracy rate.",
-      category: "Fraud Detection",
-      timeAgo: "1 day ago",
-      likes: 89,
-      comments: 24,
-      shares: 19,
-      imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400",
-    },
-  ];
+  const { data: newsArticles = [] } = useQuery({
+    queryKey: ["/api/news"],
+    queryFn: () => fetch("/api/news?limit=3").then(res => res.json()),
+  });
 
   const forumCategories = [
     {
@@ -144,46 +113,58 @@ export default function Landing() {
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {newsArticles.map((article) => (
+            {newsArticles.map((article: any) => (
               <Card key={article.id} className="hover:shadow-md transition-shadow" data-testid={`news-card-${article.id}`}>
                 <div className="aspect-video w-full overflow-hidden rounded-t-lg">
                   <img 
-                    src={article.imageUrl} 
+                    src={article.imageUrl || "https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"} 
                     alt={article.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <CardContent className="p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Badge variant="secondary" data-testid={`category-${article.id}`}>
-                      {article.category}
-                    </Badge>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    {article.categories && article.categories.length > 0 ? (
+                      article.categories.slice(0, 2).map((cat: any) => (
+                        <Badge 
+                          key={cat.id}
+                          style={{ backgroundColor: cat.color, color: '#fff' }}
+                          data-testid={`category-${article.id}-${cat.slug}`}
+                        >
+                          {cat.name}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge variant="secondary" data-testid={`category-${article.id}`}>
+                        {article.category || 'General'}
+                      </Badge>
+                    )}
                     <span className="text-gray-500 dark:text-gray-400 text-sm" data-testid={`time-${article.id}`}>
-                      {article.timeAgo}
+                      {new Date(article.publishedAt).toLocaleDateString()}
                     </span>
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2" data-testid={`title-${article.id}`}>
                     {article.title}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3" data-testid={`excerpt-${article.id}`}>
-                    {article.excerpt}
+                    {article.content?.substring(0, 150)}...
                   </p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                       <button className="flex items-center space-x-1 hover:text-primary dark:hover:text-ai-teal" data-testid={`like-${article.id}`}>
                         <Heart className="h-4 w-4" />
-                        <span>{article.likes}</span>
+                        <span>{article.likes || 0}</span>
                       </button>
                       <button className="flex items-center space-x-1 hover:text-primary dark:hover:text-ai-teal" data-testid={`comment-${article.id}`}>
                         <MessageCircle className="h-4 w-4" />
-                        <span>{article.comments}</span>
+                        <span>{article.commentCount || 0}</span>
                       </button>
                       <button className="flex items-center space-x-1 hover:text-primary dark:hover:text-ai-teal" data-testid={`share-${article.id}`}>
                         <Share className="h-4 w-4" />
-                        <span>{article.shares}</span>
+                        <span>{article.shares || 0}</span>
                       </button>
                     </div>
-                    <span className="text-sm font-medium text-primary dark:text-ai-teal" data-testid={`read-more-${article.id}`}>
+                    <span className="text-sm font-medium text-primary dark:text-ai-teal cursor-pointer" data-testid={`read-more-${article.id}`}>
                       Read More
                     </span>
                   </div>
