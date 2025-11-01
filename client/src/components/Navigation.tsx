@@ -83,7 +83,7 @@ export function Navigation() {
               <img 
                 src={logoImage} 
                 alt="The Digital Ledger" 
-                className="h-11 w-auto"
+                className="h-12 w-auto"
               />
             </div>
           </Link>
