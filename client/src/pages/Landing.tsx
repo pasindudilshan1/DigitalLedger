@@ -28,6 +28,21 @@ export default function Landing() {
     queryFn: () => fetch("/api/podcasts?limit=3").then(res => res.json()),
   });
 
+  const { data: featuredNews } = useQuery({
+    queryKey: ["/api/news/featured"],
+    queryFn: () => fetch("/api/news/featured").then(res => res.json()),
+  });
+
+  const { data: featuredPodcast } = useQuery({
+    queryKey: ["/api/podcasts/featured"],
+    queryFn: () => fetch("/api/podcasts/featured").then(res => res.json()),
+  });
+
+  const { data: featuredDiscussion } = useQuery({
+    queryKey: ["/api/forum/discussions/featured"],
+    queryFn: () => fetch("/api/forum/discussions/featured").then(res => res.json()),
+  });
+
   const newsArticles = [
     {
       id: "1",
@@ -119,6 +134,93 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* Featured Content Section */}
+      {(featuredNews || featuredPodcast || featuredDiscussion) && (
+        <section className="py-16 bg-gray-50 dark:bg-gray-900" data-testid="featured-section">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Featured Content
+              </h2>
+              <p className="text-gray-600 dark:text-gray-300 text-lg max-w-2xl mx-auto">
+                Handpicked highlights from our community
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredNews && (
+                <Card className="hover:shadow-lg transition-shadow border-2 border-primary/20" data-testid="featured-news-card">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge variant="default" className="bg-primary">Featured News</Badge>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2">
+                      {featuredNews.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+                      {featuredNews.excerpt || featuredNews.content?.substring(0, 150)}
+                    </p>
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-primary"
+                      onClick={() => setLocation(`/news/${featuredNews.id}`)}
+                    >
+                      Read More →
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {featuredPodcast && (
+                <Card className="hover:shadow-lg transition-shadow border-2 border-secondary/20" data-testid="featured-podcast-card">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge variant="default" className="bg-secondary">Featured Podcast</Badge>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2">
+                      {featuredPodcast.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+                      {featuredPodcast.description || ''}
+                    </p>
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-secondary"
+                      onClick={() => setLocation(`/podcasts`)}
+                    >
+                      Listen Now →
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {featuredDiscussion && (
+                <Card className="hover:shadow-lg transition-shadow border-2 border-accent/20" data-testid="featured-discussion-card">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge variant="default" className="bg-accent">Featured Discussion</Badge>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2">
+                      {featuredDiscussion.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+                      {featuredDiscussion.content?.substring(0, 150) || ''}
+                    </p>
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-accent"
+                      onClick={() => setLocation(`/forums/${featuredDiscussion.id}`)}
+                    >
+                      Join Discussion →
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* News Section */}
       <section className="py-16 bg-white dark:bg-dark-bg" data-testid="news-section">
