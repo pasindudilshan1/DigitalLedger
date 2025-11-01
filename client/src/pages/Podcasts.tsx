@@ -159,30 +159,27 @@ export default function Podcasts() {
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="text-center mb-12" data-testid="podcast-header">
-          <div className="flex justify-center items-start mb-4 relative">
-            <div className="flex-1"></div>
-            <div className="flex-1 text-center">
+        <div className="mb-8" data-testid="podcast-header">
+          <div className="flex justify-between items-start mb-4">
+            <div>
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
                 The Digital Ledger Podcast Hub
               </h1>
-              <p className="text-gray-600 dark:text-gray-300 text-lg max-w-5xl mx-auto">
+              <p className="text-gray-600 dark:text-gray-300 text-lg max-w-2xl">
                 Listen to expert interviews, industry insights, and practical discussions about the future of Corporate Finance and Accounting
               </p>
             </div>
-            <div className="flex-1 flex justify-end">
-              {(userRole === 'editor' || userRole === 'admin') && (
-                <Link href="/podcasts/add">
-                  <Button 
-                    className="flex items-center gap-2"
-                    data-testid="button-add-podcast"
-                  >
-                    <PlusCircle className="h-5 w-5" />
-                    Add Podcast
-                  </Button>
-                </Link>
-              )}
-            </div>
+            {(userRole === 'editor' || userRole === 'admin') && (
+              <Link href="/podcasts/add">
+                <Button 
+                  className="flex items-center gap-2"
+                  data-testid="button-add-podcast"
+                >
+                  <PlusCircle className="h-5 w-5" />
+                  Add Podcast
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
