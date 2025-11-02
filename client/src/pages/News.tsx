@@ -5,6 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Heart, MessageCircle, Share, Search, PlusCircle, CheckCircle, XCircle, Pencil } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +32,7 @@ export default function News() {
   const [location, setLocation] = useLocation();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSignInDialog, setShowSignInDialog] = useState(false);
   const { user } = useAuth();
   const userRole = (user as any)?.role;
   const { toast } = useToast();
@@ -169,6 +177,17 @@ export default function News() {
         description: url,
         duration: 5000,
       });
+    }
+  };
+
+  const handleCommentClick = (e: React.MouseEvent, articleId: string) => {
+    e.preventDefault();
+    if (!user) {
+      // Show sign-in dialog for anonymous users
+      setShowSignInDialog(true);
+    } else {
+      // Navigate to article page for authenticated users
+      setLocation(`/news/${articleId}`);
     }
   };
 
@@ -359,7 +378,7 @@ export default function News() {
                       </button>
                       <button 
                         className="flex items-center space-x-1 hover:text-blue-500 transition-colors" 
-                        onClick={(e) => e.preventDefault()}
+                        onClick={(e) => handleCommentClick(e, article.id)}
                         data-testid={`comment-${article.id}`}
                       >
                         <MessageCircle className="h-4 w-4" />
@@ -436,6 +455,36 @@ export default function News() {
           </div>
         )}
       </div>
+
+      {/* Sign In Dialog */}
+      <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>
+        <DialogContent data-testid="dialog-sign-in-to-comment">
+          <DialogHeader>
+            <DialogTitle>Sign in to leave a message</DialogTitle>
+            <DialogDescription>
+              You need to be signed in to post comments on articles. Please sign in or create an account to join the conversation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 justify-end mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSignInDialog(false)}
+              data-testid="button-cancel-sign-in"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowSignInDialog(false);
+                setLocation("/login");
+              }}
+              data-testid="button-go-to-sign-in"
+            >
+              Sign In
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
