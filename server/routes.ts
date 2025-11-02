@@ -957,6 +957,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/podcasts/:id/play', async (req: any, res) => {
+    try {
+      const episodeId = req.params.id;
+      
+      // Increment play count for all users (authenticated and anonymous)
+      await storage.incrementPodcastPlayCount(episodeId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error incrementing play count:", error);
+      res.status(500).json({ message: "Failed to increment play count" });
+    }
+  });
+
   // Poll routes
   app.get('/api/polls', async (req, res) => {
     try {

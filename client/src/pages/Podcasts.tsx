@@ -185,6 +185,23 @@ export default function Podcasts() {
     likePodcastMutation.mutate(podcastId);
   };
 
+  // Play count increment mutation
+  const incrementPlayCountMutation = useMutation({
+    mutationFn: async (podcastId: string) => {
+      return await apiRequest(`/api/podcasts/${podcastId}/play`, 'POST');
+    },
+    onSuccess: async () => {
+      // Refetch podcast data to show updated play count
+      await queryClient.invalidateQueries({ queryKey: ["/api/podcasts"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/podcasts/featured"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/podcasts", "all"] });
+    },
+  });
+
+  const handlePlayCountIncrement = (podcastId: string) => {
+    incrementPlayCountMutation.mutate(podcastId);
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -293,21 +310,21 @@ export default function Podcasts() {
                   {featuredEpisode.audioUrl && (
                     <div className="mb-6">
                       <Button 
-                        asChild
                         size="lg"
                         className="w-full bg-red-600 hover:bg-red-700 text-white"
                         data-testid="button-watch-youtube-featured"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePlayCountIncrement(featuredEpisode.id);
+                          // Open link after a short delay to ensure API call completes
+                          setTimeout(() => {
+                            window.open(featuredEpisode.audioUrl!, '_blank', 'noopener,noreferrer');
+                          }, 100);
+                        }}
                       >
-                        <a 
-                          href={featuredEpisode.audioUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center space-x-2"
-                        >
-                          <PlayCircle className="h-5 w-5" />
-                          <span>Listen Now</span>
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
+                        <PlayCircle className="h-5 w-5" />
+                        <span>Listen Now</span>
+                        <ExternalLink className="h-4 w-4" />
                       </Button>
                     </div>
                   )}
@@ -521,22 +538,22 @@ export default function Podcasts() {
                   <div className="flex justify-center mb-3">
                     {episode.audioUrl ? (
                       <Button 
-                        asChild
                         variant="ghost"
                         size="sm"
-                        className="text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
+                        className="text-white bg-red-500 hover:bg-red-600"
                         data-testid={`watch-youtube-${episode.id}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePlayCountIncrement(episode.id);
+                          // Open link after a short delay to ensure API call completes
+                          setTimeout(() => {
+                            window.open(episode.audioUrl!, '_blank', 'noopener,noreferrer');
+                          }, 100);
+                        }}
                       >
-                        <a 
-                          href={episode.audioUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center space-x-1 text-[#ffffff] bg-[#ef4444] justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-9 rounded-md px-3 hover:bg-red-50 dark:hover:bg-red-950/20"
-                        >
-                          <PlayCircle className="h-4 w-4" />
-                          <span>Listen Now</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                        <PlayCircle className="h-4 w-4" />
+                        <span>Listen Now</span>
+                        <ExternalLink className="h-3 w-3" />
                       </Button>
                     ) : (
                       <Button 

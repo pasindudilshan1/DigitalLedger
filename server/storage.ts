@@ -121,6 +121,7 @@ export interface IStorage {
   togglePodcastEpisodeFeatured(episodeId: string, isFeatured: boolean): Promise<PodcastEpisode | undefined>;
   likePodcastEpisode(episodeId: string, userId: string): Promise<void>;
   incrementPodcastEpisodeLikes(episodeId: string, userId: string): Promise<void>;
+  incrementPodcastPlayCount(episodeId: string): Promise<void>;
   getFeaturedPodcastEpisode(): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined>;
   
   // Poll operations
@@ -1220,6 +1221,14 @@ export class DatabaseStorage implements IStorage {
       targetId: episodeId,
       interactionType: 'like',
     });
+  }
+
+  async incrementPodcastPlayCount(episodeId: string): Promise<void> {
+    // Increment play count - no authentication required
+    await db
+      .update(podcastEpisodes)
+      .set({ playCount: sql`${podcastEpisodes.playCount} + 1` })
+      .where(eq(podcastEpisodes.id, episodeId));
   }
 
   async getFeaturedPodcastEpisode(): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined> {
