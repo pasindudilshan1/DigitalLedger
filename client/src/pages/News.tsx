@@ -115,6 +115,14 @@ export default function News() {
     return likedArticles.includes(articleId);
   };
 
+  // Calculate optimistic like count (shows +1 if user liked via localStorage)
+  const getOptimisticLikeCount = (article: any) => {
+    const dbCount = article.likes || 0;
+    const isLiked = isArticleLiked(article.id);
+    // Show +1 if liked in localStorage (for immediate visual feedback)
+    return isLiked ? dbCount + 1 : dbCount;
+  };
+
   const likeMutation = useMutation({
     mutationFn: async (articleId: string) => {
       return await apiRequest(`/api/news/${articleId}/like`, 'POST');
@@ -359,7 +367,7 @@ export default function News() {
                           className="h-4 w-4" 
                           fill={isArticleLiked(article.id) ? 'currentColor' : 'none'}
                         />
-                        <span>{article.likes || 0}</span>
+                        <span>{getOptimisticLikeCount(article)}</span>
                       </button>
                       <button 
                         className="flex items-center space-x-1 hover:text-blue-500 transition-colors" 

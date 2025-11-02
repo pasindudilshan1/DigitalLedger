@@ -54,6 +54,19 @@ export default function Landing() {
     return likedPodcasts.includes(podcastId);
   };
 
+  // Calculate optimistic like counts (shows +1 if user liked via localStorage)
+  const getOptimisticArticleLikeCount = (article: any) => {
+    const dbCount = article.likes || 0;
+    const isLiked = isArticleLiked(article.id);
+    return isLiked ? dbCount + 1 : dbCount;
+  };
+
+  const getOptimisticPodcastLikeCount = (podcast: any) => {
+    const dbCount = podcast.likes || 0;
+    const isLiked = isPodcastLiked(podcast.id);
+    return isLiked ? dbCount + 1 : dbCount;
+  };
+
   // Like mutation for articles
   const likeArticleMutation = useMutation({
     mutationFn: async (articleId: string) => {
@@ -259,7 +272,7 @@ export default function Landing() {
                             className="h-4 w-4" 
                             fill={isArticleLiked(article.id) ? 'currentColor' : 'none'}
                           />
-                          <span>{article.likes || 0}</span>
+                          <span>{getOptimisticArticleLikeCount(article)}</span>
                         </button>
                         <span className="flex items-center space-x-1">
                           <MessageCircle className="h-4 w-4" />
@@ -386,7 +399,7 @@ export default function Landing() {
                             className="h-4 w-4" 
                             fill={isPodcastLiked(podcast.id) ? 'currentColor' : 'none'}
                           />
-                          <span>{podcast.likes || 0}</span>
+                          <span>{getOptimisticPodcastLikeCount(podcast)}</span>
                         </button>
                       </div>
                     </div>

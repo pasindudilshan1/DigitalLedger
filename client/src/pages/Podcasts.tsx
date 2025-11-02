@@ -143,6 +143,13 @@ export default function Podcasts() {
     return likedPodcasts.includes(podcastId);
   };
 
+  // Calculate optimistic like count (shows +1 if user liked via localStorage)
+  const getOptimisticLikeCount = (podcast: any) => {
+    const dbCount = podcast.likes || 0;
+    const isLiked = isPodcastLiked(podcast.id);
+    return isLiked ? dbCount + 1 : dbCount;
+  };
+
   const likePodcastMutation = useMutation({
     mutationFn: async (podcastId: string) => {
       return await apiRequest(`/api/podcasts/${podcastId}/like`, 'POST');
@@ -331,7 +338,7 @@ export default function Podcasts() {
                         className="h-4 w-4" 
                         fill={isPodcastLiked(featuredEpisode.id) ? 'currentColor' : 'none'}
                       />
-                      <span>{featuredEpisode.likes || 0} likes</span>
+                      <span>{getOptimisticLikeCount(featuredEpisode)} likes</span>
                     </button>
                   </div>
 
@@ -525,7 +532,7 @@ export default function Podcasts() {
                           className="h-4 w-4" 
                           fill={isPodcastLiked(episode.id) ? 'currentColor' : 'none'}
                         />
-                        <span>{episode.likes || 0}</span>
+                        <span>{getOptimisticLikeCount(episode)}</span>
                       </button>
                       <span>{new Date(episode.publishedAt).toLocaleDateString()}</span>
                     </div>
