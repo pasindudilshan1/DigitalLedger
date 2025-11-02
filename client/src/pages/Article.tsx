@@ -162,6 +162,24 @@ export default function Article() {
     updateArticleMutation.mutate(data);
   };
 
+  const handleShare = async () => {
+    const url = `${window.location.origin}/news/${id}`;
+    
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: "Link Copied!",
+        description: "Article link has been copied to your clipboard.",
+      });
+    } catch (error) {
+      toast({
+        title: "Share Link",
+        description: url,
+        duration: 5000,
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -388,7 +406,13 @@ export default function Article() {
                   </div>
                 </div>
                 
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-2"
+                  onClick={handleShare}
+                  data-testid="button-share-article"
+                >
                   <Share2 className="h-4 w-4" />
                   Share
                 </Button>
