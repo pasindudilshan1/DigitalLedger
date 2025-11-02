@@ -134,6 +134,8 @@ export default function News() {
   };
 
   const handleShare = async (article: any) => {
+    alert('Share button clicked!'); // Simple test to confirm click works
+    
     const url = `${window.location.origin}/news/${article.id}`;
     const shareData = {
       title: article.title,
