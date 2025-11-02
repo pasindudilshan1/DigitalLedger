@@ -162,6 +162,52 @@ export default function Article() {
     updateArticleMutation.mutate(data);
   };
 
+  // Get like count from localStorage (only for anonymous users)
+  const getLocalLikeCount = (articleId: string): number => {
+    const likeCounts = JSON.parse(localStorage.getItem('articleLikeCounts') || '{}');
+    return likeCounts[articleId] || 0;
+  };
+
+  // Calculate optimistic like count
+  const getOptimisticLikeCount = (article: any) => {
+    const dbCount = article.likes || 0;
+    // Only add localStorage count for anonymous users (no double counting)
+    if (user) {
+      return dbCount; // Authenticated: database has the real count
+    }
+    return dbCount + getLocalLikeCount(article.id); // Anonymous: add localStorage count
+  };
+
+  const likeMutation = useMutation({
+    mutationFn: async (articleId: string) => {
+      return await apiRequest(`/api/news/${articleId}/like`, 'POST');
+    },
+    onSuccess: (response, articleId) => {
+      // Only update localStorage for anonymous users
+      if (response.anonymous) {
+        const likeCounts = JSON.parse(localStorage.getItem('articleLikeCounts') || '{}');
+        likeCounts[articleId] = (likeCounts[articleId] || 0) + 1;
+        localStorage.setItem('articleLikeCounts', JSON.stringify(likeCounts));
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/news", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update like.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLike = () => {
+    if (id) {
+      likeMutation.mutate(id);
+    }
+  };
+
   const handleShare = async () => {
     const url = `${window.location.origin}/news/${id}`;
     
@@ -396,10 +442,14 @@ export default function Article() {
 
               <div className="flex items-center justify-between pt-6 border-t">
                 <div className="flex items-center space-x-6">
-                  <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
+                  <button
+                    className="flex items-center space-x-2 text-gray-500 dark:text-gray-400 transition-colors hover:text-red-500"
+                    onClick={handleLike}
+                    data-testid={`like-${article.id}`}
+                  >
                     <Heart className="h-5 w-5" />
-                    <span data-testid="article-likes">{article.likes || 0}</span>
-                  </div>
+                    <span data-testid="article-likes">{getOptimisticLikeCount(article)}</span>
+                  </button>
                   <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
                     <MessageCircle className="h-5 w-5" />
                     <span>0 comments</span>
