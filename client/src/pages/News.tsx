@@ -134,53 +134,22 @@ export default function News() {
   };
 
   const handleShare = async (article: any) => {
-    alert('Share button clicked!'); // Simple test to confirm click works
-    
     const url = `${window.location.origin}/news/${article.id}`;
-    const shareData = {
-      title: article.title,
-      text: article.excerpt || article.title,
-      url: url,
-    };
-
-    console.log('Share button clicked for article:', article.id);
-    console.log('Share URL:', url);
-
+    
     try {
-      // Try native Web Share API first (works on mobile and some desktop browsers)
-      if (navigator.share) {
-        console.log('Using native share API');
-        await navigator.share(shareData);
-        console.log('Native share successful');
-        toast({
-          title: "Shared",
-          description: "Article shared successfully!",
-        });
-      } else {
-        console.log('Using clipboard API fallback');
-        // Fallback: copy link to clipboard
-        await navigator.clipboard.writeText(url);
-        console.log('Clipboard write successful');
-        toast({
-          title: "Link Copied",
-          description: "Article link copied to clipboard!",
-        });
-      }
-    } catch (error: any) {
-      console.error('Share error:', error);
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      
-      // User cancelled share or clipboard failed
-      if (error.name !== 'AbortError') {
-        toast({
-          title: "Error",
-          description: `Failed to share article: ${error.message}`,
-          variant: "destructive",
-        });
-      } else {
-        console.log('User cancelled share (AbortError)');
-      }
+      // Try clipboard API (works in all modern browsers)
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: "Link Copied!",
+        description: "Article link has been copied to your clipboard.",
+      });
+    } catch (error) {
+      // Fallback if clipboard API fails
+      toast({
+        title: "Share Link",
+        description: url,
+        duration: 5000,
+      });
     }
   };
 
