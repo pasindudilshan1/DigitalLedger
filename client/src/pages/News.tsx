@@ -363,7 +363,7 @@ export default function News() {
                         data-testid={`comment-${article.id}`}
                       >
                         <MessageCircle className="h-4 w-4" />
-                        <span>0</span>
+                        <span>{article.commentCount || 0}</span>
                       </button>
                       <button 
                         className="flex items-center space-x-1 hover:text-green-500 transition-colors" 
