@@ -109,14 +109,28 @@ export default function News() {
     article.excerpt?.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  const handleLike = async (articleId: string) => {
-    try {
-      await fetch(`/api/news/${articleId}/like`, { method: 'POST' });
-      // Refresh data
-      window.location.reload();
-    } catch (error) {
-      console.error('Error liking article:', error);
-    }
+  const likeMutation = useMutation({
+    mutationFn: async (articleId: string) => {
+      return await apiRequest(`/api/news/${articleId}/like`, 'POST');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+      toast({
+        title: "Success",
+        description: "Article like updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to like article. Please login first.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLike = (articleId: string) => {
+    likeMutation.mutate(articleId);
   };
 
   if (isLoading) {
