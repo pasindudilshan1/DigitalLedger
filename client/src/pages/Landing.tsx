@@ -17,7 +17,8 @@ import {
   PlayCircle,
   Heart,
   Share,
-  MessageCircle
+  MessageCircle,
+  ExternalLink
 } from "lucide-react";
 
 export default function Landing() {
@@ -239,6 +240,29 @@ export default function Landing() {
                     <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3 text-sm" data-testid={`podcast-description-${index}`}>
                       {podcast.description}
                     </p>
+                    
+                    {/* Listen Now Button */}
+                    {podcast.audioUrl && (
+                      <div className="mb-4">
+                        <Button 
+                          asChild
+                          className="w-full bg-red-600 hover:bg-red-700 text-white"
+                          data-testid={`button-listen-now-${index}`}
+                        >
+                          <a 
+                            href={podcast.audioUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center space-x-2"
+                          >
+                            <PlayCircle className="h-5 w-5" />
+                            <span>Listen Now</span>
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                    
                     <div className="border-t pt-4 mt-4">
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2">
