@@ -4,10 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  Search, 
   Moon, 
   Sun, 
   Menu,
@@ -109,17 +107,6 @@ export function Navigation() {
 
           {/* Right side controls */}
           <div className="flex items-center space-x-4">
-            {/* Search - hidden on mobile */}
-            <div className="relative hidden lg:block">
-              <Input
-                type="search"
-                placeholder="Search..."
-                className="w-64 pl-10"
-                data-testid="input-search"
-              />
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            </div>
-
             {/* Dark Mode Toggle */}
             <Button
               variant="ghost"
@@ -201,19 +188,6 @@ export function Navigation() {
                   {item.name}
                 </Link>
               ))}
-              
-              {/* Mobile search */}
-              <div className="px-3 py-2">
-                <div className="relative">
-                  <Input
-                    type="search"
-                    placeholder="Search..."
-                    className="pl-10"
-                    data-testid="input-mobile-search"
-                  />
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                </div>
-              </div>
 
               {/* Mobile auth buttons */}
               {isAuthenticated && user && (
