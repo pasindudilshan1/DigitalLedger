@@ -355,7 +355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // News routes
   app.get('/api/news', async (req: any, res) => {
     try {
-      const { category, categories, limit } = req.query;
+      const { category, categories, limit, archivedOnly } = req.query;
       // Support both single category (legacy) and multiple categories (new)
       let categoryIds: string[] | undefined;
       if (categories) {
@@ -381,9 +381,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const articles = await storage.getNewsArticles(
         categoryIds,
         limit ? parseInt(limit as string) : undefined,
-        userRole
+        userRole,
+        archivedOnly === 'true'
       );
-      console.log(`[GET /api/news] Returning ${articles.length} articles, userRole: ${userRole}, statuses: ${articles.map(a => a.status).join(', ')}`);
+      console.log(`[GET /api/news] Returning ${articles.length} articles, userRole: ${userRole}, archivedOnly: ${archivedOnly}, statuses: ${articles.map(a => a.status).join(', ')}`);
       // Prevent browser caching to ensure React Query gets fresh data after mutations
       res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.set('Pragma', 'no-cache');
@@ -569,10 +570,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/news/:id/archive', isAdmin, async (req: any, res) => {
+  app.patch('/api/news/:id/archive', isEditorOrAdmin, async (req: any, res) => {
     try {
       const articleId = req.params.id;
-      const archivedArticle = await storage.archiveNewsArticle(articleId);
+      const { isArchived } = req.body;
+      if (typeof isArchived !== 'boolean') {
+        return res.status(400).json({ message: "Invalid isArchived value. Must be boolean" });
+      }
+      const archivedArticle = await storage.archiveNewsArticle(articleId, isArchived);
       if (!archivedArticle) {
         return res.status(404).json({ message: "Article not found" });
       }
@@ -876,7 +881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Podcast routes
   app.get('/api/podcasts', async (req: any, res) => {
     try {
-      const { categories, limit } = req.query;
+      const { categories, limit, archivedOnly } = req.query;
       let categoryIds: string[] | undefined;
       if (categories) {
         // Split comma-separated string or handle array
@@ -899,9 +904,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const episodes = await storage.getPodcastEpisodes(
         categoryIds,
         limit ? parseInt(limit as string) : undefined,
-        userRole
+        userRole,
+        archivedOnly === 'true'
       );
-      console.log(`[GET /api/podcasts] Returning ${episodes.length} episodes, userRole: ${userRole}, statuses: ${episodes.map(e => e.status).join(', ')}`);
+      console.log(`[GET /api/podcasts] Returning ${episodes.length} episodes, userRole: ${userRole}, archivedOnly: ${archivedOnly}, statuses: ${episodes.map(e => e.status).join(', ')}`);
       res.json(episodes);
     } catch (error) {
       console.error("Error fetching podcast episodes:", error);
@@ -971,6 +977,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting podcast episode:", error);
       res.status(500).json({ message: "Failed to delete podcast episode" });
+    }
+  });
+
+  app.patch('/api/podcasts/:id/archive', isEditorOrAdmin, async (req: any, res) => {
+    try {
+      const episodeId = req.params.id;
+      const { isArchived } = req.body;
+      if (typeof isArchived !== 'boolean') {
+        return res.status(400).json({ message: "Invalid isArchived value. Must be boolean" });
+      }
+      const archivedEpisode = await storage.archivePodcastEpisode(episodeId, isArchived);
+      if (!archivedEpisode) {
+        return res.status(404).json({ message: "Podcast episode not found" });
+      }
+      res.json(archivedEpisode);
+    } catch (error) {
+      console.error("Error archiving podcast episode:", error);
+      res.status(500).json({ message: "Failed to archive podcast episode" });
     }
   });
 
