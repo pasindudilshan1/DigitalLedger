@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Heart, MessageCircle, Share, Search, PlusCircle, CheckCircle, XCircle, Pencil } from "lucide-react";
+import { Heart, MessageCircle, Share, Search, PlusCircle, CheckCircle, XCircle, Pencil, Archive, ArchiveRestore } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +34,7 @@ export default function News() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSignInDialog, setShowSignInDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<"active" | "archive">("active");
   const { user } = useAuth();
   const userRole = (user as any)?.role;
   const { toast } = useToast();
@@ -77,19 +79,46 @@ export default function News() {
     },
   });
 
-  // Fetch all news to get complete category list (unfiltered)
-  const { data: allNews } = useQuery({
-    queryKey: ["/api/news", "all"],
-    queryFn: () => fetch("/api/news?limit=50").then(res => res.json()),
+  const archiveMutation = useMutation({
+    mutationFn: async ({ articleId, isArchived }: { articleId: string; isArchived: boolean }) => {
+      return await apiRequest(`/api/news/${articleId}/archive`, 'PATCH', { isArchived });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+      toast({
+        title: variables.isArchived ? "Article archived" : "Article unarchived",
+        description: variables.isArchived 
+          ? "Article has been moved to the archive." 
+          : "Article has been restored from the archive.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to archive/unarchive article.",
+        variant: "destructive",
+      });
+    },
   });
 
-  // Fetch filtered news based on selected categories
-  const { data: news, isLoading } = useQuery({
-    queryKey: ["/api/news", selectedCategories],
+  // Fetch all news to get complete category list (unfiltered)
+  const { data: allNews } = useQuery({
+    queryKey: ["/api/news", "all", activeTab],
     queryFn: () => {
-      const url = selectedCategories.length === 0
-        ? "/api/news?limit=50" 
-        : `/api/news?categories=${selectedCategories.join(',')}&limit=50`;
+      const archivedParam = activeTab === "archive" ? "&archivedOnly=true" : "";
+      return fetch(`/api/news?limit=50${archivedParam}`).then(res => res.json());
+    },
+  });
+
+  // Fetch filtered news based on selected categories and active tab
+  const { data: news, isLoading } = useQuery({
+    queryKey: ["/api/news", selectedCategories, activeTab],
+    queryFn: () => {
+      const categoriesParam = selectedCategories.length > 0 
+        ? `categories=${selectedCategories.join(',')}&` 
+        : '';
+      const archivedParam = activeTab === "archive" ? "archivedOnly=true&" : "";
+      const url = `/api/news?${categoriesParam}${archivedParam}limit=50`;
       return fetch(url).then(res => res.json());
     },
   });
@@ -237,6 +266,58 @@ export default function News() {
           </div>
         </div>
 
+        {/* Tabs for Active/Archive (only for admins/editors) */}
+        {isEditorOrAdmin ? (
+          <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
+            <TabsList className="mb-8" data-testid="news-tabs">
+              <TabsTrigger value="active" data-testid="tab-active">Active</TabsTrigger>
+              <TabsTrigger value="archive" data-testid="tab-archive">Archive</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value={activeTab} className="mt-0">
+              <NewsContent />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <NewsContent />
+        )}
+      </div>
+
+      {/* Sign In Dialog */}
+      <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>
+        <DialogContent data-testid="dialog-sign-in-to-comment">
+          <DialogHeader>
+            <DialogTitle>Sign in to leave a message</DialogTitle>
+            <DialogDescription>
+              You need to be signed in to post comments on articles. Please sign in or create an account to join the conversation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 justify-end mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSignInDialog(false)}
+              data-testid="button-cancel-sign-in"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowSignInDialog(false);
+                setLocation("/login");
+              }}
+              data-testid="button-go-to-sign-in"
+            >
+              Sign In
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Layout>
+  );
+
+  function NewsContent() {
+    return (
+      <>
         {/* Filters and Search */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 space-y-4 lg:space-y-0">
           {/* Category Filters */}
@@ -435,6 +516,32 @@ export default function News() {
                           </>
                         )}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          archiveMutation.mutate({
+                            articleId: article.id,
+                            isArchived: !article.isArchived
+                          });
+                        }}
+                        disabled={archiveMutation.isPending}
+                        data-testid={`toggle-archive-${article.id}`}
+                        className="flex items-center gap-1"
+                      >
+                        {article.isArchived ? (
+                          <>
+                            <ArchiveRestore className="h-4 w-4" />
+                            Unarchive
+                          </>
+                        ) : (
+                          <>
+                            <Archive className="h-4 w-4" />
+                            Archive
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
                 </CardContent>
@@ -455,37 +562,7 @@ export default function News() {
             </Button>
           </div>
         )}
-      </div>
-
-      {/* Sign In Dialog */}
-      <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>
-        <DialogContent data-testid="dialog-sign-in-to-comment">
-          <DialogHeader>
-            <DialogTitle>Sign in to leave a message</DialogTitle>
-            <DialogDescription>
-              You need to be signed in to post comments on articles. Please sign in or create an account to join the conversation.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-3 justify-end mt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowSignInDialog(false)}
-              data-testid="button-cancel-sign-in"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => {
-                setShowSignInDialog(false);
-                setLocation("/login");
-              }}
-              data-testid="button-go-to-sign-in"
-            >
-              Sign In
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </Layout>
-  );
+      </>
+    );
+  }
 }
