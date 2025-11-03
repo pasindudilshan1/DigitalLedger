@@ -145,7 +145,8 @@ export default function News() {
         localStorage.setItem('articleLikeCounts', JSON.stringify(likeCounts));
       }
       
-      queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+      // Invalidate all news queries to refresh like counts
+      queryClient.invalidateQueries({ queryKey: ["/api/news"], refetchType: 'all' });
     },
     onError: (error: any) => {
       toast({

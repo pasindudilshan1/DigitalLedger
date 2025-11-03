@@ -384,6 +384,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userRole
       );
       console.log(`[GET /api/news] Returning ${articles.length} articles, userRole: ${userRole}, statuses: ${articles.map(a => a.status).join(', ')}`);
+      // Prevent browser caching to ensure React Query gets fresh data after mutations
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
       res.json(articles);
     } catch (error) {
       console.error("Error fetching news:", error);
@@ -467,6 +471,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id;
       const articleId = req.params.id;
       
+      console.log(`[POST /api/news/${articleId}/like] userId: ${userId || 'anonymous'}`);
+      
       // Only authenticated users can persist likes to database
       if (!userId) {
         // Anonymous users: likes stored in localStorage only, no database change
@@ -475,7 +481,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Authenticated users: increment like count in database (no toggle, always increment)
       await storage.incrementNewsArticleLikes(articleId, userId);
-      res.json({ success: true, anonymous: false });
+      
+      // Fetch updated article to get new like count
+      const updatedArticle = await storage.getNewsArticle(articleId);
+      const newLikeCount = updatedArticle?.likes || 0;
+      
+      console.log(`[POST /api/news/${articleId}/like] New like count: ${newLikeCount}`);
+      
+      res.json({ success: true, anonymous: false, likes: newLikeCount });
     } catch (error) {
       console.error("Error liking news article:", error);
       res.status(500).json({ message: "Failed to like news article" });
