@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
   Search, 
   PlayCircle, 
@@ -17,7 +18,9 @@ import {
   Pencil,
   CheckCircle,
   XCircle,
-  ExternalLink
+  ExternalLink,
+  Archive,
+  ArchiveRestore
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,6 +41,7 @@ export default function Podcasts() {
   const [location, setLocation] = useLocation();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"active" | "archive">("active");
   const { user } = useAuth();
   const userRole = (user as any)?.role;
   const { toast } = useToast();
@@ -83,19 +87,47 @@ export default function Podcasts() {
     },
   });
 
-  // Fetch all episodes to get complete category list (unfiltered)
-  const { data: allEpisodes } = useQuery({
-    queryKey: ["/api/podcasts", "all"],
-    queryFn: () => fetch("/api/podcasts?limit=50").then(res => res.json()),
+  const archiveMutation = useMutation({
+    mutationFn: async ({ episodeId, isArchived }: { episodeId: string; isArchived: boolean }) => {
+      return await apiRequest(`/api/podcasts/${episodeId}/archive`, 'PATCH', { isArchived });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/featured"] });
+      toast({
+        title: variables.isArchived ? "Podcast archived" : "Podcast unarchived",
+        description: variables.isArchived 
+          ? "Podcast has been moved to the archive." 
+          : "Podcast has been restored from the archive.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to archive/unarchive podcast.",
+        variant: "destructive",
+      });
+    },
   });
 
-  // Fetch filtered episodes based on selected categories
-  const { data: episodes, isLoading } = useQuery({
-    queryKey: ["/api/podcasts", selectedCategories],
+  // Fetch all episodes to get complete category list (unfiltered)
+  const { data: allEpisodes } = useQuery({
+    queryKey: ["/api/podcasts", "all", activeTab],
     queryFn: () => {
-      const url = selectedCategories.length === 0
-        ? "/api/podcasts?limit=50" 
-        : `/api/podcasts?categories=${selectedCategories.join(',')}&limit=50`;
+      const archivedParam = activeTab === "archive" ? "&archivedOnly=true" : "";
+      return fetch(`/api/podcasts?limit=50${archivedParam}`).then(res => res.json());
+    },
+  });
+
+  // Fetch filtered episodes based on selected categories and active tab
+  const { data: episodes, isLoading } = useQuery({
+    queryKey: ["/api/podcasts", selectedCategories, activeTab],
+    queryFn: () => {
+      const categoriesParam = selectedCategories.length > 0 
+        ? `categories=${selectedCategories.join(',')}&` 
+        : '';
+      const archivedParam = activeTab === "archive" ? "archivedOnly=true&" : "";
+      const url = `/api/podcasts?${categoriesParam}${archivedParam}limit=50`;
       return fetch(url).then(res => res.json());
     },
   });
@@ -248,6 +280,28 @@ export default function Podcasts() {
           </div>
         </div>
 
+        {/* Tabs for Active/Archive (only for admins/editors) */}
+        {isEditorOrAdmin ? (
+          <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
+            <TabsList className="mb-8" data-testid="podcasts-tabs">
+              <TabsTrigger value="active" data-testid="tab-active">Active</TabsTrigger>
+              <TabsTrigger value="archive" data-testid="tab-archive">Archive</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value={activeTab} className="mt-0">
+              <PodcastsContent />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <PodcastsContent />
+        )}
+      </div>
+    </Layout>
+  );
+
+  function PodcastsContent() {
+    return (
+      <>
         {/* Featured Episode Player */}
         {featuredEpisode && (
           <Card className="mb-12 relative" data-testid="featured-episode">
@@ -597,6 +651,32 @@ export default function Podcasts() {
                           </>
                         )}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          archiveMutation.mutate({
+                            episodeId: episode.id,
+                            isArchived: !episode.isArchived
+                          });
+                        }}
+                        disabled={archiveMutation.isPending}
+                        data-testid={`toggle-archive-${episode.id}`}
+                        className="flex items-center gap-1"
+                      >
+                        {episode.isArchived ? (
+                          <>
+                            <ArchiveRestore className="h-4 w-4" />
+                            Unarchive
+                          </>
+                        ) : (
+                          <>
+                            <Archive className="h-4 w-4" />
+                            Archive
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
                 </CardContent>
@@ -648,7 +728,7 @@ export default function Podcasts() {
             </Button>
           </div>
         </div>
-      </div>
-    </Layout>
-  );
+      </>
+    );
+  }
 }
