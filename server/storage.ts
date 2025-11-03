@@ -82,12 +82,12 @@ export interface IStorage {
   initializeNewsCategories(): Promise<void>;
   
   // News operations
-  getNewsArticles(categoryIds?: string[], limit?: number, userRole?: string): Promise<(NewsArticle & { categories: NewsCategory[] })[]>;
+  getNewsArticles(categoryIds?: string[], limit?: number, userRole?: string, archivedOnly?: boolean): Promise<(NewsArticle & { categories: NewsCategory[] })[]>;
   getNewsArticle(id: string): Promise<(NewsArticle & { categories: NewsCategory[] }) | undefined>;
   createNewsArticle(article: InsertNewsArticle, categoryIds: string[]): Promise<NewsArticle & { categories: NewsCategory[] }>;
   updateNewsArticle(articleId: string, updates: Partial<InsertNewsArticle>, categoryIds?: string[]): Promise<(NewsArticle & { categories: NewsCategory[] }) | undefined>;
   deleteNewsArticle(articleId: string): Promise<boolean>;
-  archiveNewsArticle(articleId: string): Promise<NewsArticle | undefined>;
+  archiveNewsArticle(articleId: string, isArchived: boolean): Promise<NewsArticle | undefined>;
   toggleNewsArticleStatus(articleId: string, status: 'published' | 'draft'): Promise<NewsArticle | undefined>;
   toggleNewsArticleFeatured(articleId: string, isFeatured: boolean): Promise<NewsArticle | undefined>;
   likeNewsArticle(articleId: string, userId: string): Promise<void>;
@@ -121,11 +121,12 @@ export interface IStorage {
   searchResources(query: string): Promise<Resource[]>;
   
   // Podcast operations
-  getPodcastEpisodes(categoryIds?: string[], limit?: number, userRole?: string): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]>;
+  getPodcastEpisodes(categoryIds?: string[], limit?: number, userRole?: string, archivedOnly?: boolean): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]>;
   getPodcastEpisode(id: string): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined>;
   createPodcastEpisode(episode: InsertPodcastEpisode, categoryIds: string[]): Promise<PodcastEpisode & { categories: NewsCategory[] }>;
   updatePodcastEpisode(episodeId: string, updates: Partial<InsertPodcastEpisode>, categoryIds?: string[]): Promise<(PodcastEpisode & { categories: NewsCategory[] }) | undefined>;
   deletePodcastEpisode(episodeId: string): Promise<boolean>;
+  archivePodcastEpisode(episodeId: string, isArchived: boolean): Promise<PodcastEpisode | undefined>;
   togglePodcastEpisodeStatus(episodeId: string, status: 'published' | 'draft'): Promise<PodcastEpisode | undefined>;
   togglePodcastEpisodeFeatured(episodeId: string, isFeatured: boolean): Promise<PodcastEpisode | undefined>;
   likePodcastEpisode(episodeId: string, userId: string): Promise<void>;
@@ -421,20 +422,25 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getNewsArticles(categoryIds?: string[], limit = 10, userRole?: string): Promise<(NewsArticle & { categories: NewsCategory[] })[]> {
+  async getNewsArticles(categoryIds?: string[], limit = 10, userRole?: string, archivedOnly = false): Promise<(NewsArticle & { categories: NewsCategory[] })[]> {
     let articles: NewsArticle[];
     
     // Admins and editors can see all articles; regular users only see published
     const canSeeAllStatuses = userRole === 'admin' || userRole === 'editor';
     
     if (categoryIds && categoryIds.length > 0) {
-      // Build the where clause - always include category filter, add status filter for non-admins
-      const whereClause = canSeeAllStatuses
-        ? inArray(articleCategories.categoryId, categoryIds)
-        : and(
-            inArray(articleCategories.categoryId, categoryIds),
-            eq(newsArticles.status, 'published')
-          );
+      // Build the where clause with category, archived, and status filters
+      const conditions = [inArray(articleCategories.categoryId, categoryIds)];
+      
+      // Filter by archived status
+      conditions.push(eq(newsArticles.isArchived, archivedOnly));
+      
+      // Add status filter for non-admins
+      if (!canSeeAllStatuses) {
+        conditions.push(eq(newsArticles.status, 'published'));
+      }
+      
+      const whereClause = and(...conditions);
       
       const results = await db
         .selectDistinct({ article: newsArticles })
@@ -445,21 +451,21 @@ export class DatabaseStorage implements IStorage {
         .limit(limit);
       articles = results.map(r => r.article);
     } else {
-      // No category filter - admins see all, regular users see only published
-      if (canSeeAllStatuses) {
-        articles = await db
-          .select()
-          .from(newsArticles)
-          .orderBy(desc(newsArticles.publishedAt))
-          .limit(limit);
-      } else {
-        articles = await db
-          .select()
-          .from(newsArticles)
-          .where(eq(newsArticles.status, 'published'))
-          .orderBy(desc(newsArticles.publishedAt))
-          .limit(limit);
+      // No category filter - apply archived and status filters
+      const conditions = [eq(newsArticles.isArchived, archivedOnly)];
+      
+      if (!canSeeAllStatuses) {
+        conditions.push(eq(newsArticles.status, 'published'));
       }
+      
+      const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+      
+      articles = await db
+        .select()
+        .from(newsArticles)
+        .where(whereClause)
+        .orderBy(desc(newsArticles.publishedAt))
+        .limit(limit);
     }
 
     const articlesWithCategories = await Promise.all(
@@ -582,10 +588,10 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
-  async archiveNewsArticle(articleId: string): Promise<NewsArticle | undefined> {
+  async archiveNewsArticle(articleId: string, isArchived: boolean): Promise<NewsArticle | undefined> {
     const [updated] = await db
       .update(newsArticles)
-      .set({ isArchived: true })
+      .set({ isArchived })
       .where(eq(newsArticles.id, articleId))
       .returning();
     return updated;
@@ -1072,20 +1078,25 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  async getPodcastEpisodes(categoryIds?: string[], limit = 10, userRole?: string): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]> {
+  async getPodcastEpisodes(categoryIds?: string[], limit = 10, userRole?: string, archivedOnly = false): Promise<(PodcastEpisode & { categories: NewsCategory[] })[]> {
     let episodes: PodcastEpisode[];
     
     // Admins and editors can see all episodes; regular users only see published
     const canSeeAllStatuses = userRole === 'admin' || userRole === 'editor';
     
     if (categoryIds && categoryIds.length > 0) {
-      // Build the where clause - always include category filter, add status filter for non-admins
-      const whereClause = canSeeAllStatuses
-        ? inArray(podcastCategories.categoryId, categoryIds)
-        : and(
-            inArray(podcastCategories.categoryId, categoryIds),
-            eq(podcastEpisodes.status, 'published')
-          );
+      // Build the where clause with category, archived, and status filters
+      const conditions = [inArray(podcastCategories.categoryId, categoryIds)];
+      
+      // Filter by archived status
+      conditions.push(eq(podcastEpisodes.isArchived, archivedOnly));
+      
+      // Add status filter for non-admins
+      if (!canSeeAllStatuses) {
+        conditions.push(eq(podcastEpisodes.status, 'published'));
+      }
+      
+      const whereClause = and(...conditions);
       
       const results = await db
         .selectDistinct({ episode: podcastEpisodes })
@@ -1096,21 +1107,21 @@ export class DatabaseStorage implements IStorage {
         .limit(limit);
       episodes = results.map(r => r.episode);
     } else {
-      // No category filter - admins see all, regular users see only published
-      if (canSeeAllStatuses) {
-        episodes = await db
-          .select()
-          .from(podcastEpisodes)
-          .orderBy(desc(podcastEpisodes.publishedAt))
-          .limit(limit);
-      } else {
-        episodes = await db
-          .select()
-          .from(podcastEpisodes)
-          .where(eq(podcastEpisodes.status, 'published'))
-          .orderBy(desc(podcastEpisodes.publishedAt))
-          .limit(limit);
+      // No category filter - apply archived and status filters
+      const conditions = [eq(podcastEpisodes.isArchived, archivedOnly)];
+      
+      if (!canSeeAllStatuses) {
+        conditions.push(eq(podcastEpisodes.status, 'published'));
       }
+      
+      const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+      
+      episodes = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(whereClause)
+        .orderBy(desc(podcastEpisodes.publishedAt))
+        .limit(limit);
     }
 
     const episodesWithCategories = await Promise.all(
@@ -1232,6 +1243,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(podcastEpisodes.id, episodeId));
     
     return true;
+  }
+
+  async archivePodcastEpisode(episodeId: string, isArchived: boolean): Promise<PodcastEpisode | undefined> {
+    const [updated] = await db
+      .update(podcastEpisodes)
+      .set({ isArchived })
+      .where(eq(podcastEpisodes.id, episodeId))
+      .returning();
+    return updated;
   }
 
   async togglePodcastEpisodeStatus(episodeId: string, status: 'published' | 'draft'): Promise<PodcastEpisode | undefined> {
