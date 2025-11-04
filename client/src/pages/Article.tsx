@@ -690,87 +690,97 @@ export default function Article() {
                           <FormLabel>Article Image (Optional)</FormLabel>
                           <div className="space-y-4">
                             {/* File Upload Option */}
-                            <div>
-                              <ObjectUploader
-                                maxNumberOfFiles={1}
-                                maxFileSize={5242880} // 5MB limit for images
-                                onGetUploadParameters={async () => {
-                                  console.log("Getting upload parameters...");
-                                  try {
-                                    const response = await apiRequest("/api/objects/upload", "POST");
-                                    console.log("Upload URL received:", response.uploadURL);
-                                    return {
-                                      method: "PUT" as const,
-                                      url: response.uploadURL,
-                                    };
-                                  } catch (error) {
-                                    console.error("Error getting upload URL:", error);
-                                    toast({
-                                      title: "Upload Error",
-                                      description: "Failed to get upload URL. Please try again.",
-                                      variant: "destructive",
-                                    });
-                                    throw error;
-                                  }
-                                }}
-                                onComplete={async (result) => {
-                                  console.log("Upload complete, result:", result);
-                                  
-                                  if (result.failed && result.failed.length > 0) {
-                                    console.error("Upload failed:", result.failed);
-                                    toast({
-                                      title: "Upload Failed",
-                                      description: "Failed to upload image. Please try again.",
-                                      variant: "destructive",
-                                    });
-                                    return;
-                                  }
-                                  
-                                  if (result.successful && result.successful.length > 0) {
-                                    const uploadedFile = result.successful[0];
-                                    console.log("Uploaded file:", uploadedFile);
-                                    const imageURL = uploadedFile.uploadURL;
-                                    console.log("Image URL:", imageURL);
-                                    
-                                    if (imageURL) {
-                                      try {
-                                        console.log("Setting ACL policy for:", imageURL);
-                                        const aclResponse = await apiRequest("/api/articles/images", "PUT", {
-                                          imageURL: imageURL
-                                        });
-                                        console.log("ACL response:", aclResponse);
-                                        
-                                        const publicURL = `/public-objects${aclResponse.objectPath}`;
-                                        console.log("Public URL:", publicURL);
-                                        field.onChange(publicURL);
-                                        
-                                        toast({
-                                          title: "Success",
-                                          description: "Image uploaded successfully!",
-                                        });
-                                      } catch (error) {
-                                        console.error("Error setting image ACL:", error);
-                                        toast({
-                                          title: "Error",
-                                          description: `Failed to process uploaded image: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                                          variant: "destructive",
-                                        });
-                                      }
-                                    } else {
-                                      console.error("No image URL found in upload result");
-                                      toast({
-                                        title: "Error",
-                                        description: "Upload succeeded but no URL was returned",
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }
-                                }}
-                                buttonClassName="w-full"
-                              >
-                                <Upload className="h-4 w-4 mr-2" />
-                                Upload Image
-                              </ObjectUploader>
+                            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6">
+                              <div className="flex flex-col items-center gap-2">
+                                <Upload className="h-8 w-8 text-gray-400" />
+                                <div className="text-center">
+                                  <label htmlFor="image-upload" className="cursor-pointer">
+                                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700">
+                                      Choose file
+                                    </span>
+                                    <input
+                                      id="image-upload"
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      data-testid="input-upload-image"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+
+                                        // Validate file size (5MB)
+                                        if (file.size > 5242880) {
+                                          toast({
+                                            title: "File too large",
+                                            description: "Image must be less than 5MB",
+                                            variant: "destructive",
+                                          });
+                                          return;
+                                        }
+
+                                        // Validate file type
+                                        if (!file.type.startsWith('image/')) {
+                                          toast({
+                                            title: "Invalid file type",
+                                            description: "Please select an image file",
+                                            variant: "destructive",
+                                          });
+                                          return;
+                                        }
+
+                                        try {
+                                          console.log("Starting upload for:", file.name);
+                                          
+                                          // Get upload URL from backend
+                                          const uploadParams = await apiRequest("/api/objects/upload", "POST");
+                                          console.log("Got upload URL");
+
+                                          // Upload file to cloud storage
+                                          const uploadResponse = await fetch(uploadParams.uploadURL, {
+                                            method: "PUT",
+                                            body: file,
+                                            headers: {
+                                              "Content-Type": file.type,
+                                            },
+                                          });
+
+                                          if (!uploadResponse.ok) {
+                                            throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+                                          }
+
+                                          console.log("Upload successful, setting ACL...");
+
+                                          // Set ACL policy
+                                          const aclResponse = await apiRequest("/api/articles/images", "PUT", {
+                                            imageURL: uploadParams.uploadURL.split('?')[0], // Remove query params
+                                          });
+
+                                          // Set the public URL
+                                          const publicURL = `/public-objects${aclResponse.objectPath}`;
+                                          field.onChange(publicURL);
+
+                                          toast({
+                                            title: "Success",
+                                            description: "Image uploaded successfully!",
+                                          });
+
+                                          // Reset file input
+                                          e.target.value = '';
+                                        } catch (error) {
+                                          console.error("Upload error:", error);
+                                          toast({
+                                            title: "Upload Failed",
+                                            description: error instanceof Error ? error.message : "Failed to upload image",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                  <span className="text-xs text-gray-500"> or drag and drop</span>
+                                </div>
+                                <p className="text-xs text-gray-500">PNG, JPG, WebP up to 5MB</p>
+                              </div>
                             </div>
 
                             {/* URL Input Option */}
