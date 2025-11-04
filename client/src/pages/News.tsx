@@ -385,7 +385,7 @@ export default function News() {
                 <Link href={`/news/${article.id}`}>
                   <div className="aspect-video w-full overflow-hidden rounded-t-lg cursor-pointer">
                     <img 
-                      src={article.imageUrl || "https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"}
+                      src={article.imageUrl || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop&q=80"}
                       alt={article.title}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                       loading="lazy"
