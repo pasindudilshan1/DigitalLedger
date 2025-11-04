@@ -695,26 +695,53 @@ export default function Article() {
                                 maxNumberOfFiles={1}
                                 maxFileSize={5242880} // 5MB limit for images
                                 onGetUploadParameters={async () => {
-                                  const response = await apiRequest("/api/objects/upload", "POST");
-                                  return {
-                                    method: "PUT" as const,
-                                    url: response.uploadURL,
-                                  };
+                                  console.log("Getting upload parameters...");
+                                  try {
+                                    const response = await apiRequest("/api/objects/upload", "POST");
+                                    console.log("Upload URL received:", response.uploadURL);
+                                    return {
+                                      method: "PUT" as const,
+                                      url: response.uploadURL,
+                                    };
+                                  } catch (error) {
+                                    console.error("Error getting upload URL:", error);
+                                    toast({
+                                      title: "Upload Error",
+                                      description: "Failed to get upload URL. Please try again.",
+                                      variant: "destructive",
+                                    });
+                                    throw error;
+                                  }
                                 }}
                                 onComplete={async (result) => {
+                                  console.log("Upload complete, result:", result);
+                                  
+                                  if (result.failed && result.failed.length > 0) {
+                                    console.error("Upload failed:", result.failed);
+                                    toast({
+                                      title: "Upload Failed",
+                                      description: "Failed to upload image. Please try again.",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+                                  
                                   if (result.successful && result.successful.length > 0) {
                                     const uploadedFile = result.successful[0];
+                                    console.log("Uploaded file:", uploadedFile);
                                     const imageURL = uploadedFile.uploadURL;
+                                    console.log("Image URL:", imageURL);
                                     
                                     if (imageURL) {
                                       try {
-                                        // Set ACL policy for the uploaded image
+                                        console.log("Setting ACL policy for:", imageURL);
                                         const aclResponse = await apiRequest("/api/articles/images", "PUT", {
                                           imageURL: imageURL
                                         });
+                                        console.log("ACL response:", aclResponse);
                                         
-                                        // Update the form field with the public URL
                                         const publicURL = `/public-objects${aclResponse.objectPath}`;
+                                        console.log("Public URL:", publicURL);
                                         field.onChange(publicURL);
                                         
                                         toast({
@@ -725,10 +752,17 @@ export default function Article() {
                                         console.error("Error setting image ACL:", error);
                                         toast({
                                           title: "Error",
-                                          description: "Failed to process uploaded image",
+                                          description: `Failed to process uploaded image: ${error instanceof Error ? error.message : 'Unknown error'}`,
                                           variant: "destructive",
                                         });
                                       }
+                                    } else {
+                                      console.error("No image URL found in upload result");
+                                      toast({
+                                        title: "Error",
+                                        description: "Upload succeeded but no URL was returned",
+                                        variant: "destructive",
+                                      });
                                     }
                                   }
                                 }}
