@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Calendar, ExternalLink, Heart, MessageCircle, Share2, Edit, Trash2, Archive, ArchiveRestore, Upload } from "lucide-react";
+import { ArrowLeft, Calendar, ExternalLink, Heart, MessageCircle, Share2, Edit, Trash2, Archive, ArchiveRestore, Upload, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { insertNewsArticleSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -799,7 +799,25 @@ export default function Article() {
                             {/* Current Image Preview */}
                             {field.value && (
                               <div className="border rounded-lg p-4">
-                                <p className="text-sm text-gray-500 mb-2">Current Image:</p>
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-sm text-gray-500">Current Image:</p>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      field.onChange('');
+                                      toast({
+                                        title: "Image removed",
+                                        description: "The image has been cleared",
+                                      });
+                                    }}
+                                    data-testid="button-clear-image"
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Clear Image
+                                  </Button>
+                                </div>
                                 <img 
                                   src={field.value} 
                                   alt="Article preview" 
