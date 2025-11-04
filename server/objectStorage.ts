@@ -223,6 +223,38 @@ export class ObjectStorageService {
     return normalizedPath;
   }
 
+  // Deletes an object entity from storage.
+  async deleteObjectEntity(objectPath: string): Promise<void> {
+    try {
+      // Normalize the path if it's a public URL
+      const normalizedPath = objectPath.startsWith("/public-objects")
+        ? objectPath.replace("/public-objects", "")
+        : objectPath;
+
+      // Don't try to delete external URLs or placeholder images
+      if (
+        !normalizedPath.startsWith("/") ||
+        normalizedPath.includes("unsplash.com") ||
+        normalizedPath.includes("http")
+      ) {
+        return;
+      }
+
+      const { bucketName, objectName } = parseObjectPath(normalizedPath);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      const [exists] = await file.exists();
+      if (exists) {
+        await file.delete();
+        console.log(`Deleted old image: ${normalizedPath}`);
+      }
+    } catch (error) {
+      console.error("Error deleting object:", error);
+      // Don't throw - we don't want to fail the update if delete fails
+    }
+  }
+
   // Checks if the user can access the object entity.
   async canAccessObjectEntity({
     userId,

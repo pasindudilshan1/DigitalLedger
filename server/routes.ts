@@ -437,6 +437,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categoryIdsArray = categoryIds || (category ? [category] : undefined);
       
       const articleData = insertNewsArticleSchema.partial().parse(articleFields);
+      
+      // If imageUrl is being updated, delete the old image
+      if (articleData.imageUrl) {
+        const existingArticle = await storage.getNewsArticle(articleId);
+        if (existingArticle?.imageUrl && existingArticle.imageUrl !== articleData.imageUrl) {
+          const objectStorageService = new ObjectStorageService();
+          await objectStorageService.deleteObjectEntity(existingArticle.imageUrl);
+        }
+      }
+      
       const updatedArticle = await storage.updateNewsArticle(articleId, articleData, categoryIdsArray);
       if (!updatedArticle) {
         return res.status(404).json({ message: "Article not found" });
@@ -456,6 +466,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categoryIdsArray = categoryIds || (category ? [category] : undefined);
       
       const articleData = insertNewsArticleSchema.partial().parse(articleFields);
+      
+      // If imageUrl is being updated, delete the old image
+      if (articleData.imageUrl) {
+        const existingArticle = await storage.getNewsArticle(articleId);
+        if (existingArticle?.imageUrl && existingArticle.imageUrl !== articleData.imageUrl) {
+          const objectStorageService = new ObjectStorageService();
+          await objectStorageService.deleteObjectEntity(existingArticle.imageUrl);
+        }
+      }
+      
       const updatedArticle = await storage.updateNewsArticle(articleId, articleData, categoryIdsArray);
       if (!updatedArticle) {
         return res.status(404).json({ message: "Article not found" });
@@ -958,6 +978,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { categoryIds, ...episodeFields } = req.body;
       const categoryIdsArray = categoryIds || undefined;
       const episodeData = insertPodcastEpisodeSchema.partial().parse(episodeFields);
+      
+      // If imageUrl is being updated, delete the old image
+      if (episodeData.imageUrl) {
+        const existingEpisode = await storage.getPodcastEpisode(id);
+        if (existingEpisode?.imageUrl && existingEpisode.imageUrl !== episodeData.imageUrl) {
+          const objectStorageService = new ObjectStorageService();
+          await objectStorageService.deleteObjectEntity(existingEpisode.imageUrl);
+        }
+      }
+      
       const episode = await storage.updatePodcastEpisode(id, episodeData, categoryIdsArray);
       if (!episode) {
         return res.status(404).json({ message: "Podcast episode not found" });
