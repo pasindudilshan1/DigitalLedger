@@ -234,6 +234,8 @@ export default function Article() {
   };
 
   const onSubmitArticle = (data: ArticleFormData) => {
+    console.log("Submitting article with data:", data);
+    console.log("Image URL being submitted:", data.imageUrl);
     updateArticleMutation.mutate(data);
   };
 
@@ -757,7 +759,13 @@ export default function Article() {
 
                                           // Set the public URL
                                           const publicURL = `/public-objects${aclResponse.objectPath}`;
+                                          console.log("Setting image URL to:", publicURL);
+                                          
+                                          // Use both field.onChange and setValue for reliability
                                           field.onChange(publicURL);
+                                          articleForm.setValue('imageUrl', publicURL, { shouldDirty: true, shouldValidate: true });
+                                          
+                                          console.log("Current form values after upload:", articleForm.getValues());
 
                                           toast({
                                             title: "Success",
@@ -975,7 +983,7 @@ export default function Article() {
                                 })}
                               </p>
                             </div>
-                            {user?.id === comment.authorId && (
+                            {user && (user as any).id === comment.authorId && (
                               <Button
                                 variant="ghost"
                                 size="sm"

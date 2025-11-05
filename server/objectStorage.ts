@@ -3,8 +3,8 @@ import { Response } from "express";
 import { randomUUID } from "crypto";
 import type {
   ObjectAclPolicy,
-  ObjectPermission,
 } from "./objectAcl";
+import { ObjectPermission } from "./objectAcl";
 import {
   canAccessObject,
   getObjectAclPolicy,
