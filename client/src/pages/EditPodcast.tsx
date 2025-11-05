@@ -21,12 +21,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ObjectUploader } from "@/components/ObjectUploader";
 import { apiRequest } from "@/lib/queryClient";
 import { z } from "zod";
-import { Save, Mic, Image, ArrowLeft, Headphones, Loader2, Trash2 } from "lucide-react";
+import { Save, Mic, Image, ArrowLeft, Headphones, Loader2, Trash2, X, Upload } from "lucide-react";
 import { Link, useLocation, useParams } from "wouter";
-import type { UploadResult } from "@uppy/core";
 
 interface NewsCategory {
   id: string;
@@ -56,7 +54,8 @@ type PodcastFormData = z.infer<typeof podcastFormSchema>;
 
 export default function EditPodcast() {
   const { id } = useParams();
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -155,36 +154,6 @@ export default function EditPodcast() {
     },
   });
 
-  const handleGetUploadParameters = async () => {
-    const response = await apiRequest("/api/upload-parameters", "GET");
-    return response as { method: "PUT"; url: string };
-  };
-
-  const handleImageUpload = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    if (result.successful && result.successful.length > 0) {
-      const uploadURL = result.successful[0].uploadURL;
-      try {
-        setUploadingImage(true);
-        const response = await apiRequest("/api/articles/images", "PUT", {
-          imageURL: uploadURL,
-        }) as { objectPath: string };
-        podcastForm.setValue("imageUrl", response.objectPath);
-        toast({
-          title: "Success",
-          description: "Episode image uploaded successfully!",
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to process uploaded image.",
-          variant: "destructive",
-        });
-        console.error("Error processing image upload:", error);
-      } finally {
-        setUploadingImage(false);
-      }
-    }
-  };
 
   const onSubmitPodcast = (data: PodcastFormData) => {
     updatePodcastMutation.mutate(data);
@@ -466,31 +435,107 @@ export default function EditPodcast() {
                     </div>
                   </div>
 
-                  <div className="space-y-4 border-t pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Episode Cover Image</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Upload an image for the episode (Max 5MB).
-                        </p>
-                      </div>
-                      <ObjectUploader
-                        maxNumberOfFiles={1}
-                        maxFileSize={5242880}
-                        onGetUploadParameters={handleGetUploadParameters}
-                        onComplete={handleImageUpload}
-                        buttonClassName="flex items-center gap-2"
-                      >
-                        <Image className="h-4 w-4" />
-                        {uploadingImage ? "Processing..." : "Upload Image"}
-                      </ObjectUploader>
-                    </div>
-                    {podcastForm.watch("imageUrl") && (
-                      <Badge variant="secondary" className="text-xs" data-testid="badge-podcast-image-uploaded">
-                        Image uploaded successfully
-                      </Badge>
+                  <FormField
+                    control={podcastForm.control}
+                    name="imageUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Episode Cover Image</FormLabel>
+                        <FormControl>
+                          <div className="space-y-4">
+                            {field.value && (
+                              <div className="relative">
+                                <img 
+                                  src={field.value} 
+                                  alt="Episode cover" 
+                                  className="w-full max-h-64 object-cover rounded-lg"
+                                  data-testid="img-podcast-preview"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-2 right-2"
+                                  onClick={() => {
+                                    field.onChange("");
+                                    podcastForm.setValue('imageUrl', "", { shouldDirty: true });
+                                    setSelectedFileName("");
+                                    toast({ title: "Image removed", description: "Episode cover has been cleared." });
+                                  }}
+                                  data-testid="button-clear-image"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6">
+                              <div className="flex flex-col items-center gap-4">
+                                <Upload className="h-8 w-8 text-gray-400" />
+                                <div className="text-center space-y-2">
+                                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {isUploadingImage ? "Uploading..." : "Upload Episode Cover"}
+                                  </p>
+                                  {selectedFileName && !isUploadingImage && (
+                                    <p className="text-xs text-green-600 dark:text-green-400">Selected: {selectedFileName}</p>
+                                  )}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    data-testid="input-upload-image"
+                                    disabled={isUploadingImage}
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      setSelectedFileName(file.name);
+                                      if (file.size > 5242880) {
+                                        toast({ title: "File too large", description: "Image must be less than 5MB", variant: "destructive" });
+                                        setSelectedFileName("");
+                                        e.target.value = '';
+                                        return;
+                                      }
+                                      if (!file.type.startsWith('image/')) {
+                                        toast({ title: "Invalid file type", description: "Please select an image file", variant: "destructive" });
+                                        setSelectedFileName("");
+                                        e.target.value = '';
+                                        return;
+                                      }
+                                      try {
+                                        setIsUploadingImage(true);
+                                        const uploadParams = await apiRequest("/api/objects/upload", "POST");
+                                        const uploadResponse = await fetch(uploadParams.uploadURL, {
+                                          method: "PUT",
+                                          body: file,
+                                          headers: { "Content-Type": file.type },
+                                        });
+                                        if (!uploadResponse.ok) throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+                                        const aclResponse = await apiRequest("/api/articles/images", "PUT", {
+                                          imageURL: uploadParams.uploadURL.split('?')[0],
+                                        });
+                                        const publicURL = `/public-objects${aclResponse.objectPath}`;
+                                        field.onChange(publicURL);
+                                        podcastForm.setValue('imageUrl', publicURL, { shouldDirty: true, shouldValidate: true });
+                                        toast({ title: "Success", description: `${file.name} uploaded successfully!` });
+                                        e.target.value = '';
+                                      } catch (error) {
+                                        toast({ title: "Upload Failed", description: error instanceof Error ? error.message : "Failed to upload image", variant: "destructive" });
+                                        setSelectedFileName("");
+                                        e.target.value = '';
+                                      } finally {
+                                        setIsUploadingImage(false);
+                                      }
+                                    }}
+                                  />
+                                  <p className="text-xs text-gray-500">PNG, JPG, WebP up to 5MB</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </FormControl>
+                        <FormDescription>Upload a cover image for your podcast episode. Recommended size: 1200×630px.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
 
                   <FormField
                     control={podcastForm.control}
