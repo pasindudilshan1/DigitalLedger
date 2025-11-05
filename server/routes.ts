@@ -1165,7 +1165,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const filePath = req.params.filePath;
     const objectStorageService = new ObjectStorageService();
     try {
-      const file = await objectStorageService.searchPublicObject(filePath);
+      let file = await objectStorageService.searchPublicObject(filePath);
+      
+      // If not found in public directories and path starts with "objects/",
+      // try to get it from the private directory (it may have public ACL)
+      if (!file && filePath.startsWith("objects/")) {
+        try {
+          const objectPath = `/${filePath}`;
+          file = await objectStorageService.getObjectEntityFile(objectPath);
+        } catch (error) {
+          // File not found in private directory either
+        }
+      }
+      
       if (!file) {
         return res.status(404).json({ error: "File not found" });
       }
