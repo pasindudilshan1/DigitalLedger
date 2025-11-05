@@ -37,6 +37,8 @@ export default function Article() {
   const [isEditing, setIsEditing] = useState(false);
   const [location, setLocation] = useLocation();
   const [commentContent, setCommentContent] = useState("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState("");
 
   const articleFormSchema = z.object({
     title: z.string().min(1, "Title is required"),
@@ -693,101 +695,116 @@ export default function Article() {
                           <div className="space-y-4">
                             {/* File Upload Option */}
                             <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6">
-                              <div className="flex flex-col items-center gap-2">
+                              <div className="flex flex-col items-center gap-4">
                                 <Upload className="h-8 w-8 text-gray-400" />
-                                <div className="text-center">
-                                  <label htmlFor="image-upload" className="cursor-pointer">
-                                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700">
-                                      Choose file
-                                    </span>
-                                    <input
-                                      id="image-upload"
-                                      type="file"
-                                      accept="image/*"
-                                      className="hidden"
-                                      data-testid="input-upload-image"
-                                      onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
+                                <div className="text-center space-y-2">
+                                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {isUploadingImage ? "Uploading..." : "Upload Article Image"}
+                                  </p>
+                                  {selectedFileName && !isUploadingImage && (
+                                    <p className="text-xs text-green-600 dark:text-green-400">
+                                      Selected: {selectedFileName}
+                                    </p>
+                                  )}
+                                  <input
+                                    id="image-upload"
+                                    type="file"
+                                    accept="image/*"
+                                    data-testid="input-upload-image"
+                                    disabled={isUploadingImage}
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
 
-                                        // Validate file size (5MB)
-                                        if (file.size > 5242880) {
-                                          toast({
-                                            title: "File too large",
-                                            description: "Image must be less than 5MB",
-                                            variant: "destructive",
-                                          });
-                                          return;
+                                      // Show selected filename
+                                      setSelectedFileName(file.name);
+
+                                      // Validate file size (5MB)
+                                      if (file.size > 5242880) {
+                                        toast({
+                                          title: "File too large",
+                                          description: "Image must be less than 5MB",
+                                          variant: "destructive",
+                                        });
+                                        setSelectedFileName("");
+                                        e.target.value = '';
+                                        return;
+                                      }
+
+                                      // Validate file type
+                                      if (!file.type.startsWith('image/')) {
+                                        toast({
+                                          title: "Invalid file type",
+                                          description: "Please select an image file",
+                                          variant: "destructive",
+                                        });
+                                        setSelectedFileName("");
+                                        e.target.value = '';
+                                        return;
+                                      }
+
+                                      try {
+                                        setIsUploadingImage(true);
+                                        console.log("Starting upload for:", file.name);
+                                        
+                                        // Get upload URL from backend
+                                        const uploadParams = await apiRequest("/api/objects/upload", "POST");
+                                        console.log("Got upload URL:", uploadParams);
+
+                                        // Upload file to cloud storage
+                                        const uploadResponse = await fetch(uploadParams.uploadURL, {
+                                          method: "PUT",
+                                          body: file,
+                                          headers: {
+                                            "Content-Type": file.type,
+                                          },
+                                        });
+
+                                        if (!uploadResponse.ok) {
+                                          throw new Error(`Upload failed: ${uploadResponse.statusText}`);
                                         }
 
-                                        // Validate file type
-                                        if (!file.type.startsWith('image/')) {
-                                          toast({
-                                            title: "Invalid file type",
-                                            description: "Please select an image file",
-                                            variant: "destructive",
-                                          });
-                                          return;
-                                        }
+                                        console.log("Upload successful, setting ACL...");
 
-                                        try {
-                                          console.log("Starting upload for:", file.name);
-                                          
-                                          // Get upload URL from backend
-                                          const uploadParams = await apiRequest("/api/objects/upload", "POST");
-                                          console.log("Got upload URL");
+                                        // Set ACL policy
+                                        const aclResponse = await apiRequest("/api/articles/images", "PUT", {
+                                          imageURL: uploadParams.uploadURL.split('?')[0], // Remove query params
+                                        });
 
-                                          // Upload file to cloud storage
-                                          const uploadResponse = await fetch(uploadParams.uploadURL, {
-                                            method: "PUT",
-                                            body: file,
-                                            headers: {
-                                              "Content-Type": file.type,
-                                            },
-                                          });
+                                        // Set the public URL
+                                        const publicURL = `/public-objects${aclResponse.objectPath}`;
+                                        console.log("Setting image URL to:", publicURL);
+                                        
+                                        // Use both field.onChange and setValue for reliability
+                                        field.onChange(publicURL);
+                                        articleForm.setValue('imageUrl', publicURL, { shouldDirty: true, shouldValidate: true });
+                                        
+                                        console.log("Current form values after upload:", articleForm.getValues());
 
-                                          if (!uploadResponse.ok) {
-                                            throw new Error(`Upload failed: ${uploadResponse.statusText}`);
-                                          }
+                                        toast({
+                                          title: "Success",
+                                          description: "Image uploaded successfully!",
+                                        });
 
-                                          console.log("Upload successful, setting ACL...");
-
-                                          // Set ACL policy
-                                          const aclResponse = await apiRequest("/api/articles/images", "PUT", {
-                                            imageURL: uploadParams.uploadURL.split('?')[0], // Remove query params
-                                          });
-
-                                          // Set the public URL
-                                          const publicURL = `/public-objects${aclResponse.objectPath}`;
-                                          console.log("Setting image URL to:", publicURL);
-                                          
-                                          // Use both field.onChange and setValue for reliability
-                                          field.onChange(publicURL);
-                                          articleForm.setValue('imageUrl', publicURL, { shouldDirty: true, shouldValidate: true });
-                                          
-                                          console.log("Current form values after upload:", articleForm.getValues());
-
-                                          toast({
-                                            title: "Success",
-                                            description: "Image uploaded successfully!",
-                                          });
-
-                                          // Reset file input
-                                          e.target.value = '';
-                                        } catch (error) {
-                                          console.error("Upload error:", error);
-                                          toast({
-                                            title: "Upload Failed",
-                                            description: error instanceof Error ? error.message : "Failed to upload image",
-                                            variant: "destructive",
-                                          });
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                  <span className="text-xs text-gray-500"> or drag and drop</span>
+                                        // Reset file input and filename
+                                        setSelectedFileName("");
+                                        e.target.value = '';
+                                      } catch (error) {
+                                        console.error("Upload error:", error);
+                                        toast({
+                                          title: "Upload Failed",
+                                          description: error instanceof Error ? error.message : "Failed to upload image",
+                                          variant: "destructive",
+                                        });
+                                        setSelectedFileName("");
+                                        e.target.value = '';
+                                      } finally {
+                                        setIsUploadingImage(false);
+                                      }
+                                    }}
+                                  />
+                                  <p className="text-xs text-gray-500">PNG, JPG, WebP up to 5MB</p>
                                 </div>
-                                <p className="text-xs text-gray-500">PNG, JPG, WebP up to 5MB</p>
                               </div>
                             </div>
 
