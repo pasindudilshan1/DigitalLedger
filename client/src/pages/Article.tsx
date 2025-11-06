@@ -18,6 +18,7 @@ import { insertNewsArticleSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { z } from "zod";
 import DOMPurify from 'dompurify';
 
@@ -622,15 +623,14 @@ export default function Article() {
                         <FormItem>
                           <FormLabel>Content</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Write the full article content here..." 
-                              className="resize-none min-h-[200px]" 
-                              {...field}
-                              data-testid="input-edit-content"
+                            <RichTextEditor
+                              content={field.value || ''}
+                              onChange={field.onChange}
+                              placeholder="Write the full article content..."
                             />
                           </FormControl>
                           <FormDescription>
-                            The main content of the article. Line breaks will be preserved.
+                            Use the toolbar to format your content with bold, italics, colors, fonts, and more.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
