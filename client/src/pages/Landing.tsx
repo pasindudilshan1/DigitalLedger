@@ -23,9 +23,28 @@ import {
   ExternalLink
 } from "lucide-react";
 
+interface MenuSetting {
+  id: string;
+  menuKey: string;
+  menuLabel: string;
+  isVisible: boolean;
+  displayOrder: number;
+}
+
 export default function Landing() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // Fetch menu settings to control section visibility
+  const { data: menuSettings = [] } = useQuery<MenuSetting[]>({
+    queryKey: ["/api/menu-settings"],
+  });
+
+  // Helper function to check if a section should be visible
+  const isSectionVisible = (key: string): boolean => {
+    const setting = menuSettings.find(s => s.menuKey === key);
+    return setting ? setting.isVisible : true; // Show by default if setting not found
+  };
   
   const { data: allPodcasts } = useQuery({
     queryKey: ["/api/podcasts"],
@@ -191,7 +210,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* News Section */}
+      {/* News Section - only show if news tab is visible */}
+      {isSectionVisible('news') && (
       <section className="py-16 bg-white dark:bg-dark-bg" data-testid="news-section">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -299,8 +319,10 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      )}
 
-      {/* Podcast Section */}
+      {/* Podcast Section - only show if podcasts tab is visible */}
+      {isSectionVisible('podcasts') && (
       <section className="py-16 bg-gray-50 dark:bg-gray-900" data-testid="podcast-section">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -411,8 +433,10 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      )}
 
-      {/* Forum Section */}
+      {/* Forum Section - only show if forums tab is visible */}
+      {isSectionVisible('forums') && (
       <section className="py-16 bg-white dark:bg-dark-bg" data-testid="forum-section">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -458,6 +482,7 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-16 bg-gradient-to-r from-primary to-secondary text-white" data-testid="cta-section">
