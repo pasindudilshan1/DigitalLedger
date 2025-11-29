@@ -37,6 +37,32 @@ const app = express();
 // This ensures Express correctly recognizes HTTPS connections and sets secure cookies
 app.set("trust proxy", 1);
 
+// Robots.txt - Allow all crawlers including ChatGPT
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send(`# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Explicitly allow OpenAI crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Allow search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Sitemap location
+Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
+`);
+});
+
 // Bot-friendly article pages - must be FIRST middleware to intercept before Vite
 // This serves pre-rendered HTML with meta tags to ChatGPT, social media crawlers, etc.
 app.use(async (req, res, next) => {
