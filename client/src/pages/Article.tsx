@@ -1,6 +1,6 @@
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,72 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { z } from "zod";
 import DOMPurify from 'dompurify';
+
+// Helper to update document meta tags dynamically for SEO
+function updateMetaTags(article: any) {
+  if (!article) return;
+  
+  const baseUrl = window.location.origin;
+  const articleUrl = `${baseUrl}/news/${article.id}`;
+  
+  // Strip HTML from content for description
+  const plainContent = article.content 
+    ? article.content.replace(/<[^>]*>/g, '').substring(0, 160)
+    : article.excerpt || '';
+  
+  const description = article.excerpt || plainContent;
+  const imageUrl = article.imageUrl?.startsWith('/') 
+    ? `${baseUrl}${article.imageUrl}` 
+    : article.imageUrl || '';
+  
+  // Update title
+  document.title = `${article.title} | The Digital Ledger`;
+  
+  // Helper to set or create meta tag
+  const setMeta = (property: string, content: string, isProperty = false) => {
+    const attr = isProperty ? 'property' : 'name';
+    let meta = document.querySelector(`meta[${attr}="${property}"]`) as HTMLMetaElement;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute(attr, property);
+      document.head.appendChild(meta);
+    }
+    meta.content = content;
+  };
+  
+  // Primary meta tags
+  setMeta('description', description);
+  setMeta('author', 'The Digital Ledger');
+  
+  // Open Graph
+  setMeta('og:type', 'article', true);
+  setMeta('og:url', articleUrl, true);
+  setMeta('og:title', article.title, true);
+  setMeta('og:description', description, true);
+  setMeta('og:site_name', 'The Digital Ledger', true);
+  if (imageUrl) setMeta('og:image', imageUrl, true);
+  
+  // Twitter Card
+  setMeta('twitter:card', 'summary_large_image');
+  setMeta('twitter:url', articleUrl);
+  setMeta('twitter:title', article.title);
+  setMeta('twitter:description', description);
+  if (imageUrl) setMeta('twitter:image', imageUrl);
+  
+  // Article specific
+  if (article.publishedAt) {
+    setMeta('article:published_time', new Date(article.publishedAt).toISOString(), true);
+  }
+  
+  // Canonical URL
+  let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    document.head.appendChild(canonical);
+  }
+  canonical.href = articleUrl;
+}
 
 type ArticleFormData = {
   title: string;
@@ -76,6 +142,18 @@ export default function Article() {
     },
     enabled: !!id,
   });
+
+  // Update meta tags for SEO when article loads
+  useEffect(() => {
+    if (article) {
+      updateMetaTags(article);
+    }
+    
+    // Cleanup - restore default title on unmount
+    return () => {
+      document.title = 'The Digital Ledger | Corporate Finance & Accounting Community';
+    };
+  }, [article]);
 
   const { data: newsCategories = [] } = useQuery<any[]>({
     queryKey: ['/api/news-categories'],
