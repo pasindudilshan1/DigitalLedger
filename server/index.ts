@@ -74,8 +74,12 @@ app.use(async (req, res, next) => {
   
   const userAgent = req.headers['user-agent'] || '';
   
-  // If not a bot, let Vite/SPA handle it
-  if (!isBot(userAgent)) {
+  // Check for ChatGPT Agent mode (uses standard Chrome UA but has special signature header)
+  const signatureAgent = req.headers['signature-agent'] as string || '';
+  const isChatGPTAgent = signatureAgent.includes('chatgpt.com');
+  
+  // If not a bot and not ChatGPT Agent mode, let Vite/SPA handle it
+  if (!isBot(userAgent) && !isChatGPTAgent) {
     return next();
   }
   
@@ -95,7 +99,11 @@ app.use(async (req, res, next) => {
     
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const articleUrl = `${baseUrl}/news/${article.id}`;
-    const imageUrl = article.imageUrl || `${baseUrl}/default-article-image.jpg`;
+    // Ensure image URL is absolute for social media crawlers
+    let imageUrl = article.imageUrl || '/default-article-image.jpg';
+    if (imageUrl.startsWith('/')) {
+      imageUrl = `${baseUrl}${imageUrl}`;
+    }
     const publishDate = article.publishedAt ? new Date(article.publishedAt).toLocaleDateString() : 'Unknown date';
     const publishedAtISO = article.publishedAt ? article.publishedAt.toISOString() : '';
     
