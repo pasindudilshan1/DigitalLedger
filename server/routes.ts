@@ -1249,6 +1249,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bot-friendly article page with meta tags for ChatGPT, social media crawlers, etc.
+  app.get('/news/:id', async (req, res, next) => {
+    const userAgent = req.headers['user-agent'] || '';
+    
+    // Check if this is a bot/crawler (ChatGPT, social media, search engines)
+    const botPatterns = [
+      'bot', 'crawler', 'spider', 'slurp', 'facebookexternalhit', 
+      'linkedinbot', 'twitterbot', 'whatsapp', 'telegrambot',
+      'chatgpt', 'gptbot', 'anthropic', 'claude', 'bingbot', 'googlebot',
+      'discordbot', 'slackbot', 'pinterest', 'applebot'
+    ];
+    
+    const isBot = botPatterns.some(pattern => 
+      userAgent.toLowerCase().includes(pattern)
+    );
+    
+    // If not a bot, let Vite handle it (SPA routing)
+    if (!isBot) {
+      return next();
+    }
+    
+    try {
+      const articleId = parseInt(req.params.id);
+      if (isNaN(articleId)) {
+        return next();
+      }
+      
+      const article = await storage.getArticle(articleId);
+      if (!article) {
+        return next();
+      }
+      
+      // Strip HTML tags from content for description
+      const plainContent = article.content 
+        ? article.content.replace(/<[^>]*>/g, '').substring(0, 300)
+        : article.excerpt || 'Read this article on The Digital Ledger';
+      
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const articleUrl = `${baseUrl}/news/${article.id}`;
+      const imageUrl = article.imageUrl || `${baseUrl}/default-article-image.jpg`;
+      
+      // Generate bot-friendly HTML with Open Graph meta tags
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(article.title)} | The Digital Ledger</title>
+  <meta name="description" content="${escapeHtml(plainContent)}">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="${articleUrl}">
+  <meta property="og:title" content="${escapeHtml(article.title)}">
+  <meta property="og:description" content="${escapeHtml(plainContent)}">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="${articleUrl}">
+  <meta name="twitter:title" content="${escapeHtml(article.title)}">
+  <meta name="twitter:description" content="${escapeHtml(plainContent)}">
+  <meta name="twitter:image" content="${imageUrl}">
+  
+  <!-- Article metadata -->
+  <meta property="article:published_time" content="${article.publishedAt}">
+  ${article.authorName ? `<meta property="article:author" content="${escapeHtml(article.authorName)}">` : ''}
+</head>
+<body>
+  <article>
+    <h1>${escapeHtml(article.title)}</h1>
+    ${article.excerpt ? `<p><strong>${escapeHtml(article.excerpt)}</strong></p>` : ''}
+    ${article.authorName ? `<p>By ${escapeHtml(article.authorName)}</p>` : ''}
+    <p>Published: ${new Date(article.publishedAt).toLocaleDateString()}</p>
+    ${article.imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(article.title)}">` : ''}
+    <div>${article.content || ''}</div>
+    ${article.sourceUrl ? `<p>Source: <a href="${article.sourceUrl}">${escapeHtml(article.sourceName || 'Original Source')}</a></p>` : ''}
+    <p><a href="${articleUrl}">Read full article on The Digital Ledger</a></p>
+  </article>
+</body>
+</html>`;
+      
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } catch (error) {
+      console.error('Error serving bot-friendly article:', error);
+      next();
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Helper function to escape HTML special characters
+function escapeHtml(text: string): string {
+  const htmlEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return text.replace(/[&<>"']/g, char => htmlEntities[char] || char);
 }
