@@ -6,11 +6,118 @@ import { db } from "./db";
 import { users, newsArticles, podcastEpisodes, forumDiscussions } from "@shared/schema";
 import { storage } from "./storage";
 
+// Helper function to escape HTML special characters
+function escapeHtml(text: string): string {
+  const htmlEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return text.replace(/[&<>"']/g, char => htmlEntities[char] || char);
+}
+
+// Bot/crawler detection patterns
+const botPatterns = [
+  'bot', 'crawler', 'spider', 'slurp', 'facebookexternalhit', 
+  'linkedinbot', 'twitterbot', 'whatsapp', 'telegrambot',
+  'chatgpt', 'gptbot', 'anthropic', 'claude', 'bingbot', 'googlebot',
+  'discordbot', 'slackbot', 'pinterest', 'applebot', 'chatgpt-user'
+];
+
+function isBot(userAgent: string): boolean {
+  const ua = userAgent.toLowerCase();
+  return botPatterns.some(pattern => ua.includes(pattern));
+}
+
 const app = express();
 
 // Trust proxy - required for apps behind reverse proxy (like published Replit apps)
 // This ensures Express correctly recognizes HTTPS connections and sets secure cookies
 app.set("trust proxy", 1);
+
+// Bot-friendly article pages - must be FIRST middleware to intercept before Vite
+// This serves pre-rendered HTML with meta tags to ChatGPT, social media crawlers, etc.
+app.use(async (req, res, next) => {
+  // Only handle /news/:id routes (supports both numeric and UUID IDs)
+  const match = req.path.match(/^\/news\/([a-zA-Z0-9-]+)$/);
+  if (!match) {
+    return next();
+  }
+  
+  const userAgent = req.headers['user-agent'] || '';
+  
+  // If not a bot, let Vite/SPA handle it
+  if (!isBot(userAgent)) {
+    return next();
+  }
+  
+  try {
+    const articleId = match[1];
+    const article = await storage.getNewsArticle(articleId);
+    if (!article) {
+      return next();
+    }
+    
+    log(`Serving bot-friendly HTML for article ${articleId}`);
+    
+    // Strip HTML tags from content for description
+    const plainContent = article.content 
+      ? article.content.replace(/<[^>]*>/g, '').substring(0, 300)
+      : article.excerpt || 'Read this article on The Digital Ledger';
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const articleUrl = `${baseUrl}/news/${article.id}`;
+    const imageUrl = article.imageUrl || `${baseUrl}/default-article-image.jpg`;
+    const publishDate = article.publishedAt ? new Date(article.publishedAt).toLocaleDateString() : 'Unknown date';
+    const publishedAtISO = article.publishedAt ? article.publishedAt.toISOString() : '';
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(article.title)} | The Digital Ledger</title>
+  <meta name="description" content="${escapeHtml(plainContent)}">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="${articleUrl}">
+  <meta property="og:title" content="${escapeHtml(article.title)}">
+  <meta property="og:description" content="${escapeHtml(plainContent)}">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="${articleUrl}">
+  <meta name="twitter:title" content="${escapeHtml(article.title)}">
+  <meta name="twitter:description" content="${escapeHtml(plainContent)}">
+  <meta name="twitter:image" content="${imageUrl}">
+  
+  ${publishedAtISO ? `<meta property="article:published_time" content="${publishedAtISO}">` : ''}
+</head>
+<body>
+  <article>
+    <h1>${escapeHtml(article.title)}</h1>
+    ${article.excerpt ? `<p><strong>${escapeHtml(article.excerpt)}</strong></p>` : ''}
+    <p>Published: ${publishDate}</p>
+    ${article.imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(article.title)}">` : ''}
+    <div>${article.content || ''}</div>
+    ${article.sourceUrl ? `<p>Source: <a href="${article.sourceUrl}">${escapeHtml(article.sourceName || 'Original Source')}</a></p>` : ''}
+    <p><a href="${articleUrl}">Read full article on The Digital Ledger</a></p>
+  </article>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html');
+    return res.send(html);
+  } catch (error) {
+    console.error('Error serving bot-friendly article:', error);
+    next();
+  }
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
