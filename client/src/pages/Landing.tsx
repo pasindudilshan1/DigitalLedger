@@ -190,11 +190,10 @@ export default function Landing() {
             <h1 className="text-4xl md:text-6xl font-bold mb-6" data-testid="hero-title">
               Welcome to <span className="text-yellow-300">The Digital Ledger</span>
             </h1>
-            <p className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto mb-8" data-testid="hero-subtitle">
-              <span className="font-semibold">Where CFOs, Controllers, FP&A leaders, and senior finance professionals come to stay sharp and stay ahead.</span>
-              <br className="hidden md:block" />
-              Join a growing community focused on AI, finance transformation, and modern corporate finance.
-            </p>
+            <div className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto mb-8" data-testid="hero-subtitle">
+              <p className="font-bold mb-3">Where CFOs, Controllers, FP&A leaders, and senior finance professionals come to stay sharp and stay ahead.</p>
+              <p>Join a growing community focused on AI, finance transformation, and modern corporate finance.</p>
+            </div>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button 
                 size="lg"
