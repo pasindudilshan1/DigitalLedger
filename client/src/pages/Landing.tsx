@@ -489,7 +489,7 @@ export default function Landing() {
       <section className="py-16 cta-gradient text-white" data-testid="cta-section">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl md:text-4xl font-bold mb-6" data-testid="cta-title">
-            Ready to Transform Your Accounting Practice?
+            Ready to Level Up Your Finance Leadership?
           </h2>
           <p className="text-xl text-blue-100 mb-8" data-testid="cta-description">
             Join thousands of professionals already using AI to revolutionize their accounting workflows
