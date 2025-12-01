@@ -257,16 +257,16 @@ export default function Podcasts() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8" data-testid="podcast-header">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                The Digital Ledger Podcast Hub
-              </h1>
-              <p className="text-gray-600 dark:text-gray-300 text-lg max-w-2xl">
-                Listen to expert interviews, industry insights, and practical discussions about the future of Corporate Finance and Accounting
-              </p>
-            </div>
-            {(userRole === 'editor' || userRole === 'admin') && (
+          <div className="text-center mb-6">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              The Digital Ledger Podcast Hub
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 text-lg max-w-2xl mx-auto">
+              Listen to expert interviews, industry insights, and practical discussions about the future of Corporate Finance and Accounting
+            </p>
+          </div>
+          {(userRole === 'editor' || userRole === 'admin') && (
+            <div className="flex justify-center">
               <Link href="/podcasts/add">
                 <Button 
                   className="flex items-center gap-2"
@@ -276,8 +276,8 @@ export default function Podcasts() {
                   Add Podcast
                 </Button>
               </Link>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Tabs for Active/Archive (only for admins/editors) */}
