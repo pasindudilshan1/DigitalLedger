@@ -191,7 +191,7 @@ export default function Landing() {
               Welcome to <span className="text-yellow-300">The Digital Ledger</span>
             </h1>
             <p className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto mb-8" data-testid="hero-subtitle">
-              Where CFOs, Controllers, FP&A leaders, and senior finance professionals come to stay sharp and stay ahead.
+              <span className="font-semibold">Where CFOs, Controllers, FP&A leaders, and senior finance professionals come to stay sharp and stay ahead.</span>
               <br className="hidden md:block" />
               Join a growing community focused on AI, finance transformation, and modern corporate finance.
             </p>
