@@ -243,16 +243,16 @@ export default function News() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8" data-testid="news-header">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Latest Insights in Corporate Finance, FP&A, Accounting and AI-Driven Operations
-              </h1>
-              <p className="text-gray-600 dark:text-gray-300 text-lg max-w-2xl">
-                Stay up to date with concise, high-quality insights from trusted sources, academic research, and industry leaders. Perfect for busy finance professionals who want clarity without the noise.
-              </p>
-            </div>
-            {(userRole === 'editor' || userRole === 'admin') && (
+          <div className="text-center mb-6">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Latest Insights in Corporate Finance, FP&A, Accounting and AI-Driven Operations
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 text-lg max-w-2xl mx-auto">
+              Stay up to date with concise, high-quality insights from trusted sources, academic research, and industry leaders. Perfect for busy finance professionals who want clarity without the noise.
+            </p>
+          </div>
+          {(userRole === 'editor' || userRole === 'admin') && (
+            <div className="flex justify-center">
               <Link href="/news/add">
                 <Button 
                   className="flex items-center gap-2"
@@ -262,8 +262,8 @@ export default function News() {
                   Add News
                 </Button>
               </Link>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Tabs for Active/Archive (only for admins/editors) */}
