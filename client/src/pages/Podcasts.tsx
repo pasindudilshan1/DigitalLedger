@@ -439,10 +439,6 @@ export default function Podcasts() {
                   )}
                   
                   <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                    <span className="flex items-center space-x-1">
-                      <Headphones className="h-4 w-4" />
-                      <span>{episode.playCount?.toLocaleString() || 0}</span>
-                    </span>
                     <button
                       className="flex items-center space-x-1 transition-colors hover:text-red-500"
                       onClick={(e) => handlePodcastLike(e, episode.id)}
