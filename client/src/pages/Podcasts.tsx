@@ -439,14 +439,6 @@ export default function Podcasts() {
                   )}
                   
                   <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                    <button
-                      className="flex items-center space-x-1 transition-colors hover:text-red-500"
-                      onClick={(e) => handlePodcastLike(e, episode.id)}
-                      data-testid={`like-${episode.id}`}
-                    >
-                      <Heart className="h-4 w-4" />
-                      <span>{getOptimisticLikeCount(episode)}</span>
-                    </button>
                     <span>{new Date(episode.publishedAt).toLocaleDateString()}</span>
                   </div>
                   
