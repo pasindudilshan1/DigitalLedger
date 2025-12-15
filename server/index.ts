@@ -759,6 +759,609 @@ ${JSON.stringify(jsonLd, null, 2)}
   }
 });
 
+// ============================================
+// Bot-friendly Homepage
+// ============================================
+app.use(async (req, res, next) => {
+  if (req.path !== '/') {
+    return next();
+  }
+  
+  const userAgent = req.headers['user-agent'] || '';
+  const signatureAgent = req.headers['signature-agent'] as string || '';
+  const isChatGPTAgent = signatureAgent.includes('chatgpt.com');
+  
+  if (!isBot(userAgent) && !isChatGPTAgent) {
+    return next();
+  }
+  
+  try {
+    log('Serving SEO-optimized HTML for homepage to crawler');
+    
+    const articles = await storage.getNewsArticles();
+    const podcasts = await storage.getPodcastEpisodes();
+    const recentArticles = articles.filter(a => a.status === 'published' && !a.isArchived).slice(0, 6);
+    const recentPodcasts = podcasts.filter(p => p.status === 'published' && !p.isArchived).slice(0, 3);
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "The Digital Ledger",
+      "description": "Where CFOs, Controllers, FP&A leaders, and senior finance professionals come to stay sharp and stay ahead.",
+      "url": baseUrl,
+      "publisher": {
+        "@type": "Organization",
+        "name": "The Digital Ledger"
+      }
+    };
+    
+    const articlesHtml = recentArticles.map(a => `<li><a href="${baseUrl}/news/${a.id}">${escapeHtml(a.title)}</a></li>`).join('\n');
+    const podcastsHtml = recentPodcasts.map(p => `<li><a href="${baseUrl}/podcasts/${p.id}">${escapeHtml(p.title)}</a></li>`).join('\n');
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>The Digital Ledger | Corporate Finance & Accounting Community</title>
+  <meta name="description" content="Where CFOs, Controllers, FP&A leaders, and senior finance professionals come to stay sharp and stay ahead. Join a growing community focused on AI, finance transformation, and modern corporate finance.">
+  <meta name="keywords" content="corporate finance, accounting, CFO, controller, FP&A, AI, finance transformation, digital ledger">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${baseUrl}">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${baseUrl}">
+  <meta property="og:title" content="The Digital Ledger | Corporate Finance & Accounting Community">
+  <meta property="og:description" content="Where CFOs, Controllers, FP&A leaders, and senior finance professionals come to stay sharp and stay ahead.">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="The Digital Ledger">
+  <meta name="twitter:description" content="Where CFOs, Controllers, FP&A leaders, and senior finance professionals stay sharp and stay ahead.">
+  
+  <script type="application/ld+json">
+${JSON.stringify(jsonLd, null, 2)}
+  </script>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    h1 { font-size: 2.5em; color: #1a365d; }
+    h2 { font-size: 1.5em; margin-top: 2em; color: #2d3748; }
+    .tagline { font-size: 1.2em; color: #4a5568; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 0.5em 0; border-bottom: 1px solid #eee; }
+    a { color: #2b6cb0; text-decoration: none; }
+    nav { margin-top: 2em; padding-top: 1em; border-top: 2px solid #e2e8f0; }
+    nav a { margin-right: 1em; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Welcome to The Digital Ledger</h1>
+    <p class="tagline"><strong>Where CFOs, Controllers, FP&A leaders, and senior finance professionals come to stay sharp and stay ahead.</strong></p>
+    <p>Join a growing community focused on AI, finance transformation, and modern corporate finance.</p>
+  </header>
+  
+  <main>
+    <section>
+      <h2>Latest Insights in Corporate Finance, FP&A, Accounting and AI-Driven Operations</h2>
+      <ul>${articlesHtml || '<li>No articles available yet.</li>'}</ul>
+      <p><a href="${baseUrl}/news">View all articles →</a></p>
+    </section>
+    
+    <section>
+      <h2>The Digital Ledger Podcast Hub</h2>
+      <ul>${podcastsHtml || '<li>No podcasts available yet.</li>'}</ul>
+      <p><a href="${baseUrl}/podcasts">View all podcasts →</a></p>
+    </section>
+  </main>
+  
+  <nav>
+    <a href="${baseUrl}/news">News & Insights</a>
+    <a href="${baseUrl}/podcasts">Podcasts</a>
+    <a href="${baseUrl}/forums">Forums</a>
+    <a href="${baseUrl}/resources">Resources</a>
+    <a href="${baseUrl}/about">About Us</a>
+  </nav>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=1800');
+    return res.send(html);
+  } catch (error) {
+    console.error('Error serving bot-friendly homepage:', error);
+    next();
+  }
+});
+
+// ============================================
+// Bot-friendly News listing page
+// ============================================
+app.use(async (req, res, next) => {
+  if (req.path !== '/news') {
+    return next();
+  }
+  
+  const userAgent = req.headers['user-agent'] || '';
+  const signatureAgent = req.headers['signature-agent'] as string || '';
+  const isChatGPTAgent = signatureAgent.includes('chatgpt.com');
+  
+  if (!isBot(userAgent) && !isChatGPTAgent) {
+    return next();
+  }
+  
+  try {
+    log('Serving SEO-optimized HTML for news listing to crawler');
+    
+    const articles = await storage.getNewsArticles();
+    const publishedArticles = articles.filter(a => a.status === 'published' && !a.isArchived).slice(0, 20);
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "Latest Insights in Corporate Finance, FP&A, Accounting and AI-Driven Operations",
+      "description": "Stay up to date with concise, high-quality insights from trusted sources, academic research, and industry leaders.",
+      "url": `${baseUrl}/news`,
+      "publisher": { "@type": "Organization", "name": "The Digital Ledger", "url": baseUrl }
+    };
+    
+    const articlesHtml = publishedArticles.map(a => {
+      let imgUrl = a.imageUrl || '';
+      if (imgUrl.startsWith('/')) imgUrl = `${baseUrl}${imgUrl}`;
+      return `
+      <article>
+        <h2><a href="${baseUrl}/news/${a.id}">${escapeHtml(a.title)}</a></h2>
+        ${a.imageUrl ? `<img src="${imgUrl}" alt="${escapeHtml(a.title)}" style="max-width:200px;">` : ''}
+        <p>${generateDescription(a.excerpt || a.content || '', 200)}</p>
+        <p><small>${a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ''}</small></p>
+      </article>`;
+    }).join('\n');
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>News & Insights | The Digital Ledger</title>
+  <meta name="description" content="Stay up to date with concise, high-quality insights from trusted sources, academic research, and industry leaders. Perfect for busy finance professionals.">
+  <meta name="keywords" content="finance news, accounting news, corporate finance, FP&A, AI, CFO insights">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${baseUrl}/news">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${baseUrl}/news">
+  <meta property="og:title" content="News & Insights | The Digital Ledger">
+  <meta property="og:description" content="Stay up to date with concise, high-quality insights for finance professionals.">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <script type="application/ld+json">
+${JSON.stringify(jsonLd, null, 2)}
+  </script>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    h1 { text-align: center; }
+    .subtitle { text-align: center; color: #666; max-width: 600px; margin: 0 auto 2em; }
+    article { border-bottom: 1px solid #eee; padding: 1.5em 0; }
+    article h2 { font-size: 1.3em; margin: 0 0 0.5em 0; }
+    article h2 a { color: #0066cc; text-decoration: none; }
+    img { border-radius: 8px; float: left; margin-right: 1em; margin-bottom: 0.5em; }
+    article::after { content: ''; display: table; clear: both; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Latest Insights in Corporate Finance, FP&A, Accounting and AI-Driven Operations</h1>
+    <p class="subtitle">Stay up to date with concise, high-quality insights from trusted sources, academic research, and industry leaders. Perfect for busy finance professionals who want clarity without the noise.</p>
+  </header>
+  
+  <main>
+    ${articlesHtml || '<p>No articles available yet.</p>'}
+  </main>
+  
+  <nav>
+    <p><a href="${baseUrl}">← Back to The Digital Ledger</a></p>
+  </nav>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=1800');
+    return res.send(html);
+  } catch (error) {
+    console.error('Error serving bot-friendly news listing:', error);
+    next();
+  }
+});
+
+// ============================================
+// Bot-friendly About page
+// ============================================
+app.use(async (req, res, next) => {
+  if (req.path !== '/about') {
+    return next();
+  }
+  
+  const userAgent = req.headers['user-agent'] || '';
+  const signatureAgent = req.headers['signature-agent'] as string || '';
+  const isChatGPTAgent = signatureAgent.includes('chatgpt.com');
+  
+  if (!isBot(userAgent) && !isChatGPTAgent) {
+    return next();
+  }
+  
+  try {
+    log('Serving SEO-optimized HTML for about page to crawler');
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "AboutPage",
+      "name": "About The Digital Ledger",
+      "description": "The Digital Ledger is a community platform for CFOs, Controllers, FP&A leaders, and senior finance professionals focused on AI, finance transformation, and modern corporate finance.",
+      "url": `${baseUrl}/about`,
+      "publisher": { "@type": "Organization", "name": "The Digital Ledger", "url": baseUrl }
+    };
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>About Us | The Digital Ledger</title>
+  <meta name="description" content="The Digital Ledger is a community platform for CFOs, Controllers, FP&A leaders, and senior finance professionals focused on AI, finance transformation, and modern corporate finance.">
+  <meta name="keywords" content="about, digital ledger, finance community, CFO, controller, FP&A">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${baseUrl}/about">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${baseUrl}/about">
+  <meta property="og:title" content="About The Digital Ledger">
+  <meta property="og:description" content="A community platform for finance professionals focused on AI and modern corporate finance.">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <script type="application/ld+json">
+${JSON.stringify(jsonLd, null, 2)}
+  </script>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.8; }
+    h1 { color: #1a365d; }
+    h2 { color: #2d3748; margin-top: 2em; }
+    .mission { font-size: 1.2em; color: #4a5568; border-left: 4px solid #2b6cb0; padding-left: 1em; margin: 1.5em 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>About The Digital Ledger</h1>
+  </header>
+  
+  <main>
+    <p class="mission">The Digital Ledger is where CFOs, Controllers, FP&A leaders, and senior finance professionals come to stay sharp and stay ahead.</p>
+    
+    <h2>Our Mission</h2>
+    <p>We're building a growing community focused on AI, finance transformation, and modern corporate finance. Our platform provides curated news, expert podcasts, educational resources, and collaborative forums for finance professionals navigating the digital transformation of their industry.</p>
+    
+    <h2>What We Offer</h2>
+    <ul>
+      <li><strong>News & Insights:</strong> Curated articles on corporate finance, FP&A, accounting, and AI-driven operations</li>
+      <li><strong>Podcast Hub:</strong> Expert interviews and discussions about the future of finance</li>
+      <li><strong>Community Forums:</strong> Connect with fellow professionals and share insights</li>
+      <li><strong>Educational Resources:</strong> Learn about AI tools and technologies transforming finance</li>
+    </ul>
+    
+    <h2>Join Our Community</h2>
+    <p>Whether you're a CFO leading digital transformation, a controller modernizing processes, or an FP&A professional leveraging AI, The Digital Ledger is your hub for staying ahead in the rapidly evolving world of corporate finance.</p>
+  </main>
+  
+  <nav>
+    <p><a href="${baseUrl}">← Back to The Digital Ledger</a></p>
+  </nav>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(html);
+  } catch (error) {
+    console.error('Error serving bot-friendly about page:', error);
+    next();
+  }
+});
+
+// ============================================
+// Bot-friendly Forums page
+// ============================================
+app.use(async (req, res, next) => {
+  if (req.path !== '/forums') {
+    return next();
+  }
+  
+  const userAgent = req.headers['user-agent'] || '';
+  const signatureAgent = req.headers['signature-agent'] as string || '';
+  const isChatGPTAgent = signatureAgent.includes('chatgpt.com');
+  
+  if (!isBot(userAgent) && !isChatGPTAgent) {
+    return next();
+  }
+  
+  try {
+    log('Serving SEO-optimized HTML for forums page to crawler');
+    
+    const discussions = await storage.getForumDiscussions();
+    const recentDiscussions = discussions.slice(0, 15);
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "DiscussionForumPosting",
+      "name": "Community Forums | The Digital Ledger",
+      "description": "Engage with fellow finance professionals, share insights, and discuss AI in accounting.",
+      "url": `${baseUrl}/forums`,
+      "publisher": { "@type": "Organization", "name": "The Digital Ledger", "url": baseUrl }
+    };
+    
+    const discussionsHtml = recentDiscussions.map(d => `
+      <article>
+        <h3>${escapeHtml(d.title)}</h3>
+        <p>${generateDescription(d.content || '', 150)}</p>
+        <p><small>${d.createdAt ? new Date(d.createdAt).toLocaleDateString() : ''}</small></p>
+      </article>`).join('\n');
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Community Forums | The Digital Ledger</title>
+  <meta name="description" content="Engage with fellow finance professionals, share insights, and discuss AI in accounting and corporate finance.">
+  <meta name="keywords" content="finance forum, accounting discussion, CFO community, FP&A forum, AI accounting">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${baseUrl}/forums">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${baseUrl}/forums">
+  <meta property="og:title" content="Community Forums | The Digital Ledger">
+  <meta property="og:description" content="Engage with fellow finance professionals and share insights.">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <script type="application/ld+json">
+${JSON.stringify(jsonLd, null, 2)}
+  </script>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    h1, h2 { text-align: center; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 2em; }
+    article { border-bottom: 1px solid #eee; padding: 1em 0; }
+    article h3 { margin: 0 0 0.5em 0; color: #2b6cb0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Community Forums</h1>
+    <p class="subtitle">Engage with fellow professionals, share insights, and get answers to your finance and AI challenges</p>
+  </header>
+  
+  <main>
+    <h2>Recent Discussions</h2>
+    ${discussionsHtml || '<p>No discussions available yet.</p>'}
+  </main>
+  
+  <nav>
+    <p><a href="${baseUrl}">← Back to The Digital Ledger</a></p>
+  </nav>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=1800');
+    return res.send(html);
+  } catch (error) {
+    console.error('Error serving bot-friendly forums page:', error);
+    next();
+  }
+});
+
+// ============================================
+// Bot-friendly Resources page
+// ============================================
+app.use(async (req, res, next) => {
+  if (req.path !== '/resources') {
+    return next();
+  }
+  
+  const userAgent = req.headers['user-agent'] || '';
+  const signatureAgent = req.headers['signature-agent'] as string || '';
+  const isChatGPTAgent = signatureAgent.includes('chatgpt.com');
+  
+  if (!isBot(userAgent) && !isChatGPTAgent) {
+    return next();
+  }
+  
+  try {
+    log('Serving SEO-optimized HTML for resources page to crawler');
+    
+    const resources = await storage.getEducationalResources();
+    const publishedResources = resources.filter(r => !r.isArchived).slice(0, 20);
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "Educational Resources | The Digital Ledger",
+      "description": "Comprehensive learning materials for finance professionals on AI, automation, and modern accounting practices.",
+      "url": `${baseUrl}/resources`,
+      "publisher": { "@type": "Organization", "name": "The Digital Ledger", "url": baseUrl }
+    };
+    
+    const resourcesHtml = publishedResources.map(r => `
+      <article>
+        <h3>${escapeHtml(r.title)}</h3>
+        <p>${generateDescription(r.description || '', 150)}</p>
+        <p><small>Type: ${r.resourceType || 'Resource'}</small></p>
+      </article>`).join('\n');
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Educational Resources | The Digital Ledger</title>
+  <meta name="description" content="Comprehensive learning materials for finance professionals on AI, automation, and modern accounting practices.">
+  <meta name="keywords" content="finance education, accounting resources, AI learning, CFO training, FP&A education">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${baseUrl}/resources">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${baseUrl}/resources">
+  <meta property="og:title" content="Educational Resources | The Digital Ledger">
+  <meta property="og:description" content="Comprehensive learning materials for finance professionals.">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <script type="application/ld+json">
+${JSON.stringify(jsonLd, null, 2)}
+  </script>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    h1 { text-align: center; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 2em; }
+    article { border-bottom: 1px solid #eee; padding: 1em 0; }
+    article h3 { margin: 0 0 0.5em 0; color: #2b6cb0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Educational Resources</h1>
+    <p class="subtitle">Comprehensive learning materials for finance professionals on AI, automation, and modern accounting practices</p>
+  </header>
+  
+  <main>
+    ${resourcesHtml || '<p>No resources available yet.</p>'}
+  </main>
+  
+  <nav>
+    <p><a href="${baseUrl}">← Back to The Digital Ledger</a></p>
+  </nav>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(html);
+  } catch (error) {
+    console.error('Error serving bot-friendly resources page:', error);
+    next();
+  }
+});
+
+// ============================================
+// Bot-friendly Community page
+// ============================================
+app.use(async (req, res, next) => {
+  if (req.path !== '/community') {
+    return next();
+  }
+  
+  const userAgent = req.headers['user-agent'] || '';
+  const signatureAgent = req.headers['signature-agent'] as string || '';
+  const isChatGPTAgent = signatureAgent.includes('chatgpt.com');
+  
+  if (!isBot(userAgent) && !isChatGPTAgent) {
+    return next();
+  }
+  
+  try {
+    log('Serving SEO-optimized HTML for community page to crawler');
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Community | The Digital Ledger",
+      "description": "Join thousands of finance professionals using AI and modern tools to transform how finance operates.",
+      "url": `${baseUrl}/community`,
+      "publisher": { "@type": "Organization", "name": "The Digital Ledger", "url": baseUrl }
+    };
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Community | The Digital Ledger</title>
+  <meta name="description" content="Join thousands of finance professionals using AI and modern tools to transform how finance operates.">
+  <meta name="keywords" content="finance community, accounting professionals, CFO network, FP&A community">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${baseUrl}/community">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${baseUrl}/community">
+  <meta property="og:title" content="Community | The Digital Ledger">
+  <meta property="og:description" content="Join thousands of finance professionals transforming how finance operates.">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <script type="application/ld+json">
+${JSON.stringify(jsonLd, null, 2)}
+  </script>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.8; }
+    h1 { text-align: center; color: #1a365d; }
+    .cta { text-align: center; font-size: 1.2em; color: #4a5568; margin: 2em 0; }
+    .features { margin: 2em 0; }
+    .features h2 { color: #2d3748; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Join Our Community</h1>
+    <p class="cta">Join thousands of finance professionals using AI and modern tools to transform how finance operates.</p>
+  </header>
+  
+  <main>
+    <div class="features">
+      <h2>Why Join The Digital Ledger Community?</h2>
+      <ul>
+        <li><strong>Connect:</strong> Network with CFOs, Controllers, and FP&A leaders</li>
+        <li><strong>Learn:</strong> Access curated insights and educational resources</li>
+        <li><strong>Discuss:</strong> Participate in forums on AI and finance transformation</li>
+        <li><strong>Stay Ahead:</strong> Get the latest news on corporate finance and accounting</li>
+      </ul>
+    </div>
+  </main>
+  
+  <nav>
+    <p><a href="${baseUrl}">← Back to The Digital Ledger</a></p>
+  </nav>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(html);
+  } catch (error) {
+    console.error('Error serving bot-friendly community page:', error);
+    next();
+  }
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
