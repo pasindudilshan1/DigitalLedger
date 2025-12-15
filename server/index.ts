@@ -510,6 +510,255 @@ ${JSON.stringify(jsonLd, null, 2)}
   }
 });
 
+// ============================================
+// Bot-friendly podcast pages for ChatGPT, social media, and search engines
+// ============================================
+app.use(async (req, res, next) => {
+  // Handle /podcasts/:id routes
+  const match = req.path.match(/^\/podcasts\/([a-zA-Z0-9-]+)$/);
+  if (!match) {
+    return next();
+  }
+  
+  const userAgent = req.headers['user-agent'] || '';
+  const signatureAgent = req.headers['signature-agent'] as string || '';
+  const isChatGPTAgent = signatureAgent.includes('chatgpt.com');
+  
+  if (!isBot(userAgent) && !isChatGPTAgent) {
+    return next();
+  }
+  
+  try {
+    const podcastId = match[1];
+    const podcast = await storage.getPodcastEpisode(podcastId);
+    if (!podcast || podcast.isArchived) {
+      return next();
+    }
+    
+    log(`Serving SEO-optimized HTML for podcast ${podcastId} to crawler`);
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const podcastUrl = `${baseUrl}/podcasts/${podcast.id}`;
+    
+    const description = generateDescription(podcast.description || '', 160);
+    const ogDescription = generateDescription(podcast.description || '', 300);
+    
+    let imageUrl = podcast.imageUrl || `${baseUrl}/og-default.jpg`;
+    if (imageUrl.startsWith('/')) {
+      imageUrl = `${baseUrl}${imageUrl}`;
+    }
+    
+    const keywords = extractKeywords(podcast.title, podcast.description || '', []);
+    keywords.push('podcast', 'audio', 'episode');
+    
+    const publishedAt = podcast.publishedAt ? new Date(podcast.publishedAt) : new Date();
+    const publishedAtISO = publishedAt.toISOString();
+    const publishDateFormatted = publishedAt.toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+    
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "PodcastEpisode",
+      "name": podcast.title,
+      "description": description,
+      "image": imageUrl,
+      "datePublished": publishedAtISO,
+      "url": podcastUrl,
+      "duration": podcast.duration || undefined,
+      "partOfSeries": {
+        "@type": "PodcastSeries",
+        "name": "The Digital Ledger Podcast",
+        "url": `${baseUrl}/podcasts`
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "The Digital Ledger",
+        "url": baseUrl
+      }
+    };
+    
+    const html = `<!DOCTYPE html>
+<html lang="en" prefix="og: https://ogp.me/ns#">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>${escapeHtml(podcast.title)} | The Digital Ledger Podcast</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta name="keywords" content="${keywords.join(', ')}">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${podcastUrl}">
+  
+  <meta property="og:type" content="music.song">
+  <meta property="og:url" content="${podcastUrl}">
+  <meta property="og:title" content="${escapeHtml(podcast.title)}">
+  <meta property="og:description" content="${escapeHtml(ogDescription)}">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(podcast.title)}">
+  <meta name="twitter:description" content="${escapeHtml(ogDescription)}">
+  <meta name="twitter:image" content="${imageUrl}">
+  
+  <script type="application/ld+json">
+${JSON.stringify(jsonLd, null, 2)}
+  </script>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; color: #333; }
+    h1 { font-size: 2em; margin-bottom: 0.5em; }
+    .meta { color: #666; font-size: 0.9em; margin-bottom: 1.5em; }
+    img { max-width: 100%; height: auto; border-radius: 8px; }
+    .description { margin: 1.5em 0; }
+    .listen-link { display: inline-block; background: #dc2626; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin-top: 1em; }
+  </style>
+</head>
+<body>
+  <article itemscope itemtype="https://schema.org/PodcastEpisode">
+    <header>
+      <h1 itemprop="name">${escapeHtml(podcast.title)}</h1>
+      <div class="meta">
+        <time itemprop="datePublished" datetime="${publishedAtISO}">${publishDateFormatted}</time>
+        ${podcast.duration ? `&bull; ${podcast.duration}` : ''}
+        ${podcast.hostName ? `&bull; Host: ${escapeHtml(podcast.hostName)}` : ''}
+        ${podcast.guestName ? `&bull; Guest: ${escapeHtml(podcast.guestName)}` : ''}
+      </div>
+    </header>
+    
+    ${podcast.imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(podcast.title)}" itemprop="image">` : ''}
+    
+    <div class="description" itemprop="description">
+      ${podcast.description || ''}
+    </div>
+    
+    ${podcast.audioUrl ? `<a href="${podcast.audioUrl}" class="listen-link" target="_blank" rel="noopener">Listen Now</a>` : ''}
+    
+    <nav>
+      <p><a href="${baseUrl}/podcasts">← Back to all podcasts</a> | <a href="${baseUrl}">Visit The Digital Ledger</a></p>
+    </nav>
+  </article>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(html);
+  } catch (error) {
+    console.error('Error serving bot-friendly podcast:', error);
+    next();
+  }
+});
+
+// Bot-friendly podcasts listing page
+app.use(async (req, res, next) => {
+  if (req.path !== '/podcasts') {
+    return next();
+  }
+  
+  const userAgent = req.headers['user-agent'] || '';
+  const signatureAgent = req.headers['signature-agent'] as string || '';
+  const isChatGPTAgent = signatureAgent.includes('chatgpt.com');
+  
+  if (!isBot(userAgent) && !isChatGPTAgent) {
+    return next();
+  }
+  
+  try {
+    log('Serving SEO-optimized HTML for podcasts listing to crawler');
+    
+    const podcasts = await storage.getPodcastEpisodes();
+    const publishedPodcasts = podcasts.filter(p => p.status === 'published' && !p.isArchived).slice(0, 20);
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "PodcastSeries",
+      "name": "The Digital Ledger Podcast Hub",
+      "description": "Expert interviews, industry insights, and practical discussions about the future of Corporate Finance and Accounting",
+      "url": `${baseUrl}/podcasts`,
+      "publisher": {
+        "@type": "Organization",
+        "name": "The Digital Ledger",
+        "url": baseUrl
+      }
+    };
+    
+    const podcastListHtml = publishedPodcasts.map(p => {
+      let imgUrl = p.imageUrl || '';
+      if (imgUrl.startsWith('/')) imgUrl = `${baseUrl}${imgUrl}`;
+      return `
+      <article>
+        <h2><a href="${baseUrl}/podcasts/${p.id}">${escapeHtml(p.title)}</a></h2>
+        ${p.imageUrl ? `<img src="${imgUrl}" alt="${escapeHtml(p.title)}" style="max-width:200px;">` : ''}
+        <p>${generateDescription(p.description || '', 200)}</p>
+        <p><small>${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : ''} ${p.duration ? `• ${p.duration}` : ''}</small></p>
+      </article>`;
+    }).join('\n');
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Podcast Hub | The Digital Ledger</title>
+  <meta name="description" content="Listen to expert interviews, industry insights, and practical discussions about the future of Corporate Finance and Accounting.">
+  <meta name="keywords" content="podcast, finance, accounting, AI, corporate finance, FP&A, CFO">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${baseUrl}/podcasts">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${baseUrl}/podcasts">
+  <meta property="og:title" content="The Digital Ledger Podcast Hub">
+  <meta property="og:description" content="Expert interviews, industry insights, and practical discussions about the future of Corporate Finance and Accounting">
+  <meta property="og:site_name" content="The Digital Ledger">
+  
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="The Digital Ledger Podcast Hub">
+  <meta name="twitter:description" content="Expert interviews and insights on Corporate Finance and Accounting">
+  
+  <script type="application/ld+json">
+${JSON.stringify(jsonLd, null, 2)}
+  </script>
+  
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    h1 { font-size: 2em; margin-bottom: 0.5em; }
+    article { border-bottom: 1px solid #eee; padding: 1.5em 0; }
+    article h2 { font-size: 1.3em; margin: 0 0 0.5em 0; }
+    article h2 a { color: #0066cc; text-decoration: none; }
+    img { border-radius: 8px; float: left; margin-right: 1em; margin-bottom: 0.5em; }
+    article::after { content: ''; display: table; clear: both; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>The Digital Ledger Podcast Hub</h1>
+    <p>Listen to expert interviews, industry insights, and practical discussions about the future of Corporate Finance and Accounting</p>
+  </header>
+  
+  <main>
+    ${podcastListHtml || '<p>No podcast episodes available yet.</p>'}
+  </main>
+  
+  <nav>
+    <p><a href="${baseUrl}">← Back to The Digital Ledger</a></p>
+  </nav>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=1800');
+    return res.send(html);
+  } catch (error) {
+    console.error('Error serving bot-friendly podcasts listing:', error);
+    next();
+  }
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
