@@ -233,6 +233,17 @@ export const userInteractions = pgTable("user_interactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Newsletter subscribers
+export const subscribers = pgTable("subscribers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique().notNull(),
+  categories: text("categories").array(), // Array of category IDs they're interested in
+  frequency: varchar("frequency").notNull().default("weekly"), // daily, weekly, bi-weekly, monthly
+  isActive: boolean("is_active").default(true),
+  confirmedAt: timestamp("confirmed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   newsArticles: many(newsArticles),
@@ -458,6 +469,13 @@ export const insertDiscussionNewsCategorySchema = createInsertSchema(discussionN
   createdAt: true,
 });
 
+export const insertSubscriberSchema = createInsertSchema(subscribers).omit({
+  id: true,
+  createdAt: true,
+  confirmedAt: true,
+  isActive: true,
+});
+
 // Admin user management schemas
 export const adminCreateUserSchema = z.object({
   email: z.string().email("Invalid email format"),
@@ -519,3 +537,5 @@ export type PodcastCategory = typeof podcastCategories.$inferSelect;
 export type InsertPodcastCategory = z.infer<typeof insertPodcastCategorySchema>;
 export type DiscussionNewsCategory = typeof discussionNewsCategories.$inferSelect;
 export type InsertDiscussionNewsCategory = z.infer<typeof insertDiscussionNewsCategorySchema>;
+export type Subscriber = typeof subscribers.$inferSelect;
+export type InsertSubscriber = z.infer<typeof insertSubscriberSchema>;

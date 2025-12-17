@@ -15,6 +15,7 @@ import {
   userInteractions,
   userInvitations,
   menuSettings,
+  subscribers,
   type User,
   type UpsertUser,
   type NewsCategory,
@@ -48,6 +49,8 @@ import {
   type MenuSetting,
   type InsertMenuSetting,
   type UpdateMenuSetting,
+  type Subscriber,
+  type InsertSubscriber,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, ilike, inArray } from "drizzle-orm";
@@ -159,6 +162,11 @@ export interface IStorage {
   getMenuSettings(): Promise<MenuSetting[]>;
   updateMenuSetting(menuKey: string, updates: UpdateMenuSetting): Promise<MenuSetting | undefined>;
   initializeMenuSettings(): Promise<void>;
+  
+  // Subscriber operations
+  createSubscriber(subscriber: InsertSubscriber): Promise<Subscriber>;
+  getSubscriberByEmail(email: string): Promise<Subscriber | undefined>;
+  updateSubscriber(id: string, updates: Partial<InsertSubscriber>): Promise<Subscriber | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1504,6 +1512,32 @@ export class DatabaseStorage implements IStorage {
 
     await db.insert(menuSettings).values(defaultMenus);
     console.log('✓ Menu settings initialized');
+  }
+
+  // Subscriber operations
+  async createSubscriber(subscriber: InsertSubscriber): Promise<Subscriber> {
+    const [newSubscriber] = await db
+      .insert(subscribers)
+      .values(subscriber)
+      .returning();
+    return newSubscriber;
+  }
+
+  async getSubscriberByEmail(email: string): Promise<Subscriber | undefined> {
+    const [subscriber] = await db
+      .select()
+      .from(subscribers)
+      .where(eq(subscribers.email, email));
+    return subscriber;
+  }
+
+  async updateSubscriber(id: string, updates: Partial<InsertSubscriber>): Promise<Subscriber | undefined> {
+    const [updated] = await db
+      .update(subscribers)
+      .set(updates)
+      .where(eq(subscribers.id, id))
+      .returning();
+    return updated;
   }
 }
 
