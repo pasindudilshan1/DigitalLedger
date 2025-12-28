@@ -16,7 +16,9 @@ import {
   Rocket,
   FlaskConical,
   TestTube,
-  CheckCircle2
+  CheckCircle2,
+  Calculator,
+  TrendingUp
 } from "lucide-react";
 import {
   Dialog,
@@ -24,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -54,6 +57,19 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
   ready_for_commercial_use: { label: "Ready for Commercial Use", color: "bg-green-500", icon: CheckCircle2 },
 };
 
+const sectionConfig: Record<string, { title: string; description: string; icon: any }> = {
+  controller: { 
+    title: "Controller Toolbox", 
+    description: "Apps and tools to boost productivity for Controllers",
+    icon: Calculator
+  },
+  fpa: { 
+    title: "Financial Planning & Analysis Toolbox", 
+    description: "Tools designed for FP&A professionals",
+    icon: TrendingUp
+  },
+};
+
 export default function Toolbox() {
   const { user } = useAuth() as { user: any };
   const { toast } = useToast();
@@ -69,6 +85,7 @@ export default function Toolbox() {
     description: "",
     link: "",
     imageUrl: "",
+    section: "controller",
     status: "developing",
     displayOrder: 0,
     isActive: true,
@@ -150,6 +167,7 @@ export default function Toolbox() {
       description: "",
       link: "",
       imageUrl: "",
+      section: "controller",
       status: "developing",
       displayOrder: 0,
       isActive: true,
@@ -170,6 +188,7 @@ export default function Toolbox() {
       description: app.description,
       link: app.link,
       imageUrl: app.imageUrl || "",
+      section: app.section || "controller",
       status: app.status,
       displayOrder: app.displayOrder || 0,
       isActive: app.isActive ?? true,
@@ -203,6 +222,119 @@ export default function Toolbox() {
     );
   };
 
+  const controllerApps = apps?.filter(app => app.section === 'controller' || !app.section) || [];
+  const fpaApps = apps?.filter(app => app.section === 'fpa') || [];
+
+  const renderAppCard = (app: ToolboxApp) => (
+    <Card 
+      key={app.id} 
+      className="overflow-hidden hover:shadow-lg transition-shadow duration-200"
+      data-testid={`card-app-${app.id}`}
+    >
+      <div className="relative">
+        {app.imageUrl ? (
+          <img
+            src={app.imageUrl}
+            alt={app.name}
+            className="w-full h-40 object-cover"
+            data-testid={`img-app-${app.id}`}
+          />
+        ) : (
+          <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
+            <Wrench className="w-16 h-16 text-primary/50" />
+          </div>
+        )}
+        <div className="absolute top-2 right-2">
+          {getStatusBadge(app.status)}
+        </div>
+        {!app.isActive && isAdmin && (
+          <div className="absolute top-2 left-2">
+            <Badge variant="secondary">Inactive</Badge>
+          </div>
+        )}
+      </div>
+      <CardContent className="p-4">
+        <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2" data-testid={`text-app-name-${app.id}`}>
+          {app.name}
+        </h3>
+        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3" data-testid={`text-app-description-${app.id}`}>
+          {app.description}
+        </p>
+        <div className="flex items-center justify-between">
+          <a
+            href={app.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-primary hover:underline text-sm font-medium"
+            data-testid={`link-app-${app.id}`}
+          >
+            <ExternalLink className="w-4 h-4" />
+            Visit App
+          </a>
+          {isAdmin && (
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleEdit(app)}
+                data-testid={`button-edit-${app.id}`}
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(app)}
+                className="text-red-500 hover:text-red-600"
+                data-testid={`button-delete-${app.id}`}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderSection = (sectionKey: string, sectionApps: ToolboxApp[]) => {
+    const config = sectionConfig[sectionKey];
+    const Icon = config.icon;
+    
+    return (
+      <div className="mb-12" key={sectionKey}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Icon className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid={`section-title-${sectionKey}`}>
+              {config.title}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
+              {config.description}
+            </p>
+          </div>
+        </div>
+        
+        {sectionApps.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sectionApps.map(renderAppCard)}
+          </div>
+        ) : (
+          <Card className="p-8 text-center bg-gray-50 dark:bg-gray-800/50">
+            <div className="flex flex-col items-center gap-2">
+              <Icon className="w-12 h-12 text-gray-400" />
+              <p className="text-gray-600 dark:text-gray-400">
+                No apps available in this section yet.
+              </p>
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -211,10 +343,10 @@ export default function Toolbox() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3" data-testid="page-title">
                 <Rocket className="w-8 h-8 text-primary" />
-                Controller's Toolbox
+                Toolbox
               </h1>
               <p className="mt-2 text-gray-600 dark:text-gray-300">
-                Discover apps and tools to boost your productivity as a controller
+                Discover apps and tools to boost your productivity
               </p>
             </div>
             
@@ -227,111 +359,29 @@ export default function Toolbox() {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-6">
-                    <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4" />
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : apps && apps.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {apps.map((app) => (
-                <Card 
-                  key={app.id} 
-                  className="overflow-hidden hover:shadow-lg transition-shadow duration-200"
-                  data-testid={`card-app-${app.id}`}
-                >
-                  <div className="relative">
-                    {app.imageUrl ? (
-                      <img
-                        src={app.imageUrl}
-                        alt={app.name}
-                        className="w-full h-40 object-cover"
-                        data-testid={`img-app-${app.id}`}
-                      />
-                    ) : (
-                      <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                        <Wrench className="w-16 h-16 text-primary/50" />
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2">
-                      {getStatusBadge(app.status)}
-                    </div>
-                    {!app.isActive && isAdmin && (
-                      <div className="absolute top-2 left-2">
-                        <Badge variant="secondary">Inactive</Badge>
-                      </div>
-                    )}
+            <div className="space-y-12">
+              {[1, 2].map((section) => (
+                <div key={section}>
+                  <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-4" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                      <Card key={i} className="animate-pulse">
+                        <CardContent className="p-6">
+                          <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4" />
+                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
+                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2" data-testid={`text-app-name-${app.id}`}>
-                      {app.name}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3" data-testid={`text-app-description-${app.id}`}>
-                      {app.description}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <a
-                        href={app.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-primary hover:underline text-sm font-medium"
-                        data-testid={`link-app-${app.id}`}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Visit App
-                      </a>
-                      {isAdmin && (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(app)}
-                            data-testid={`button-edit-${app.id}`}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(app)}
-                            className="text-red-500 hover:text-red-600"
-                            data-testid={`button-delete-${app.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                </div>
               ))}
             </div>
           ) : (
-            <Card className="p-12 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <Wrench className="w-16 h-16 text-gray-400" />
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  No apps yet
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  {isAdmin 
-                    ? "Get started by adding your first app to the toolbox."
-                    : "Check back soon for productivity tools and apps."}
-                </p>
-                {isAdmin && (
-                  <Button onClick={handleOpenNew} className="mt-4" data-testid="button-add-first-app">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Your First App
-                  </Button>
-                )}
-              </div>
-            </Card>
+            <>
+              {renderSection('controller', controllerApps)}
+              {renderSection('fpa', fpaApps)}
+            </>
           )}
         </div>
       </div>
@@ -340,6 +390,9 @@ export default function Toolbox() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>{isEditing ? "Edit App" : "Add New App"}</DialogTitle>
+            <DialogDescription>
+              {isEditing ? "Update the app details below." : "Fill in the details to add a new app to the toolbox."}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -360,7 +413,7 @@ export default function Toolbox() {
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe what this app does and how it helps controllers..."
+                placeholder="Describe what this app does..."
                 rows={3}
                 required
                 data-testid="input-app-description"
@@ -391,22 +444,40 @@ export default function Toolbox() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="status">Status *</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value })}
-              >
-                <SelectTrigger data-testid="select-app-status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="developing">Developing</SelectItem>
-                  <SelectItem value="testing">Testing</SelectItem>
-                  <SelectItem value="beta_ready">Beta Ready</SelectItem>
-                  <SelectItem value="ready_for_commercial_use">Ready for Commercial Use</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="section">Section *</Label>
+                <Select
+                  value={formData.section}
+                  onValueChange={(value) => setFormData({ ...formData, section: value })}
+                >
+                  <SelectTrigger data-testid="select-app-section">
+                    <SelectValue placeholder="Select section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="controller">Controller Toolbox</SelectItem>
+                    <SelectItem value="fpa">FP&A Toolbox</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status *</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger data-testid="select-app-status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="developing">Developing</SelectItem>
+                    <SelectItem value="testing">Testing</SelectItem>
+                    <SelectItem value="beta_ready">Beta Ready</SelectItem>
+                    <SelectItem value="ready_for_commercial_use">Ready for Commercial Use</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">

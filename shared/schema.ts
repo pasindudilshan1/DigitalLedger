@@ -251,6 +251,7 @@ export const toolboxApps = pgTable("toolbox_apps", {
   description: text("description").notNull(),
   link: varchar("link").notNull(),
   imageUrl: varchar("image_url"),
+  section: varchar("section").notNull().default("controller"), // controller, fpa (Financial Planning & Analysis)
   status: varchar("status").notNull().default("developing"), // developing, testing, beta_ready, ready_for_commercial_use
   displayOrder: integer("display_order").default(0),
   isActive: boolean("is_active").default(true),
