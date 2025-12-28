@@ -244,6 +244,20 @@ export const subscribers = pgTable("subscribers", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Controller's Toolbox Apps
+export const toolboxApps = pgTable("toolbox_apps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description").notNull(),
+  link: varchar("link").notNull(),
+  imageUrl: varchar("image_url"),
+  status: varchar("status").notNull().default("developing"), // developing, testing, beta_ready, ready_for_commercial_use
+  displayOrder: integer("display_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   newsArticles: many(newsArticles),
@@ -476,6 +490,12 @@ export const insertSubscriberSchema = createInsertSchema(subscribers).omit({
   isActive: true,
 });
 
+export const insertToolboxAppSchema = createInsertSchema(toolboxApps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Admin user management schemas
 export const adminCreateUserSchema = z.object({
   email: z.string().email("Invalid email format"),
@@ -539,3 +559,5 @@ export type DiscussionNewsCategory = typeof discussionNewsCategories.$inferSelec
 export type InsertDiscussionNewsCategory = z.infer<typeof insertDiscussionNewsCategorySchema>;
 export type Subscriber = typeof subscribers.$inferSelect;
 export type InsertSubscriber = z.infer<typeof insertSubscriberSchema>;
+export type ToolboxApp = typeof toolboxApps.$inferSelect;
+export type InsertToolboxApp = z.infer<typeof insertToolboxAppSchema>;
