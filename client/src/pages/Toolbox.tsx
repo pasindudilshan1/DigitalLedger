@@ -18,7 +18,9 @@ import {
   TestTube,
   CheckCircle2,
   Calculator,
-  TrendingUp
+  TrendingUp,
+  Upload,
+  X
 } from "lucide-react";
 import {
   Dialog,
@@ -77,6 +79,8 @@ export default function Toolbox() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<ToolboxApp | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState("");
   
   const isAdmin = user?.role === 'admin' || user?.role === 'editor';
 
@@ -174,6 +178,72 @@ export default function Toolbox() {
     });
     setIsEditing(false);
     setSelectedApp(null);
+    setSelectedFileName("");
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFileName(file.name);
+
+    if (file.size > 5242880) {
+      toast({
+        title: "File too large",
+        description: "Image must be less than 5MB",
+        variant: "destructive",
+      });
+      setSelectedFileName("");
+      e.target.value = '';
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      setSelectedFileName("");
+      e.target.value = '';
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      const uploadResponse = await apiRequest("/api/objects/upload", "POST") as { uploadURL: string };
+      const uploadURL = uploadResponse.uploadURL;
+
+      await fetch(uploadURL, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      const aclResponse = await apiRequest("/api/toolbox/images", "PUT", {
+        imageURL: uploadURL,
+      }) as { objectPath: string };
+
+      setFormData(prev => ({ ...prev, imageUrl: aclResponse.objectPath }));
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully!",
+      });
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      });
+      setSelectedFileName("");
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
   };
 
   const handleOpenNew = () => {
@@ -434,14 +504,67 @@ export default function Toolbox() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="imageUrl">Image URL</Label>
-              <Input
-                id="imageUrl"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                placeholder="https://example.com/image.png"
-                data-testid="input-app-image"
-              />
+              <Label>App Image</Label>
+              {formData.imageUrl && (
+                <div className="relative">
+                  <img 
+                    src={formData.imageUrl} 
+                    alt="App preview" 
+                    className="w-full max-h-40 object-cover rounded-lg"
+                    data-testid="img-app-preview"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={() => {
+                      setFormData({ ...formData, imageUrl: "" });
+                      setSelectedFileName("");
+                    }}
+                    data-testid="button-clear-image"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4">
+                <div className="flex flex-col items-center gap-2">
+                  <Upload className="h-6 w-6 text-gray-400" />
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isUploadingImage ? "Uploading..." : "Upload App Image"}
+                    </p>
+                    {selectedFileName && !isUploadingImage && (
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        Uploaded: {selectedFileName}
+                      </p>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingImage}
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="toolbox-image-upload"
+                      data-testid="input-upload-image"
+                    />
+                    <label
+                      htmlFor="toolbox-image-upload"
+                      className={`inline-block px-4 py-2 text-sm font-medium rounded-md cursor-pointer ${
+                        isUploadingImage 
+                          ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
+                          : "bg-primary text-white hover:bg-primary/90"
+                      }`}
+                    >
+                      {isUploadingImage ? "Uploading..." : "Choose File"}
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Max file size: 5MB
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
