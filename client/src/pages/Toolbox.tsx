@@ -462,7 +462,7 @@ export default function Toolbox() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditing ? "Edit App" : "Add New App"}</DialogTitle>
             <DialogDescription>
@@ -499,7 +499,7 @@ export default function Toolbox() {
               <Label htmlFor="link">App Link (optional)</Label>
               <Input
                 id="link"
-                type="url"
+                type="text"
                 value={formData.link}
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                 placeholder="https://example.com"
