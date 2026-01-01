@@ -257,7 +257,7 @@ export default function Toolbox() {
     setFormData({
       name: app.name,
       description: app.description,
-      link: app.link,
+      link: app.link || "",
       imageUrl: app.imageUrl || "",
       section: app.section || "controller",
       status: app.status,
@@ -328,20 +328,24 @@ export default function Toolbox() {
         <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2" data-testid={`text-app-name-${app.id}`}>
           {app.name}
         </h3>
-        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3" data-testid={`text-app-description-${app.id}`}>
+        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4" data-testid={`text-app-description-${app.id}`}>
           {app.description}
         </p>
         <div className="flex items-center justify-between">
-          <a
-            href={app.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-primary hover:underline text-sm font-medium"
-            data-testid={`link-app-${app.id}`}
-          >
-            <ExternalLink className="w-4 h-4" />
-            Visit App
-          </a>
+          {app.link ? (
+            <a
+              href={app.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline text-sm font-medium"
+              data-testid={`link-app-${app.id}`}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Visit App
+            </a>
+          ) : (
+            <span></span>
+          )}
           {isAdmin && (
             <div className="flex gap-2">
               <Button
@@ -492,14 +496,13 @@ export default function Toolbox() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="link">App Link *</Label>
+              <Label htmlFor="link">App Link (optional)</Label>
               <Input
                 id="link"
                 type="url"
                 value={formData.link}
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                 placeholder="https://example.com"
-                required
                 data-testid="input-app-link"
               />
             </div>

@@ -249,7 +249,7 @@ export const toolboxApps = pgTable("toolbox_apps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
   description: text("description").notNull(),
-  link: varchar("link").notNull(),
+  link: varchar("link"),
   imageUrl: varchar("image_url"),
   section: varchar("section").notNull().default("controller"), // controller, fpa (Financial Planning & Analysis)
   status: varchar("status").notNull().default("developing"), // developing, testing, beta_ready, ready_for_commercial_use
