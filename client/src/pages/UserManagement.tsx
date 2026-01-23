@@ -15,7 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { adminCreateUserSchema, adminUpdateUserSchema } from "@shared/schema";
 import type { AdminCreateUser, AdminUpdateUser } from "@shared/schema";
 import { z } from "zod";
-import { UserPlus, Edit, Trash2, Search, Filter, Home, Users } from "lucide-react";
+import { UserPlus, Edit, Trash2, Search, Filter, Home, Users, Download } from "lucide-react";
 import { Link } from "wouter";
 
 const USER_ROLES = [
@@ -188,6 +188,68 @@ export default function UserManagement() {
     }
   };
 
+  const handleDownloadUsers = () => {
+    if (users.length === 0) {
+      toast({
+        title: "No users to export",
+        description: "There are no users to download.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const headers = [
+      "First Name",
+      "Last Name",
+      "Email",
+      "Role",
+      "Title",
+      "Company",
+      "Bio",
+      "Status",
+      "Points",
+      "Expertise Tags",
+      "Badges",
+      "Signed Up",
+    ];
+
+    const csvContent = [
+      headers.join(","),
+      ...users.map((user: any) => {
+        const row = [
+          `"${(user.firstName || "").replace(/"/g, '""')}"`,
+          `"${(user.lastName || "").replace(/"/g, '""')}"`,
+          `"${(user.email || "").replace(/"/g, '""')}"`,
+          `"${(user.role || "").replace(/"/g, '""')}"`,
+          `"${(user.title || "").replace(/"/g, '""')}"`,
+          `"${(user.company || "").replace(/"/g, '""')}"`,
+          `"${(user.bio || "").replace(/"/g, '""')}"`,
+          user.isActive ? "Active" : "Inactive",
+          user.points || 0,
+          `"${(user.expertiseTags || []).join("; ")}"`,
+          `"${(user.badges || []).join("; ")}"`,
+          user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "",
+        ];
+        return row.join(",");
+      }),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `users_export_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Export Complete",
+      description: `Successfully exported ${users.length} users to CSV.`,
+    });
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-7xl mx-auto">
@@ -264,6 +326,15 @@ export default function UserManagement() {
                   </SelectContent>
                 </Select>
               </div>
+              <Button
+                onClick={handleDownloadUsers}
+                variant="outline"
+                className="flex items-center gap-2"
+                data-testid="button-download-users"
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
               <Button
                 onClick={() => setIsCreateDialogOpen(true)}
                 className="flex items-center gap-2"
