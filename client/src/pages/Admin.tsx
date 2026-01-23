@@ -574,16 +574,6 @@ export default function Admin() {
                   </Button>
                 </Link>
               )}
-              <Button 
-                variant="outline" 
-                onClick={handleRebuildDatabase}
-                disabled={seedDatabaseMutation.isPending}
-                className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950" 
-                data-testid="button-rebuild-database"
-              >
-                <Upload className="h-4 w-4" />
-                {seedDatabaseMutation.isPending ? "Rebuilding..." : "Rebuild DB"}
-              </Button>
               <Link href="/">
                 <Button variant="outline" className="flex items-center gap-2" data-testid="button-home">
                   <Home className="h-4 w-4" />
