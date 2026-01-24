@@ -15,7 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { adminCreateUserSchema, adminUpdateUserSchema } from "@shared/schema";
 import type { AdminCreateUser, AdminUpdateUser } from "@shared/schema";
 import { z } from "zod";
-import { UserPlus, Edit, Trash2, Search, Filter, Home, Users, Download } from "lucide-react";
+import { UserPlus, Edit, Trash2, Search, Filter, Home, Users, Download, Bell, BellOff } from "lucide-react";
 import { Link } from "wouter";
 
 const USER_ROLES = [
@@ -157,6 +157,27 @@ export default function UserManagement() {
     },
   });
 
+  // Toggle subscription mutation
+  const toggleSubscriptionMutation = useMutation({
+    mutationFn: async ({ userId, subscribe }: { userId: string; subscribe: boolean }) => {
+      return await apiRequest(`/api/admin/users/${userId}/subscription`, "POST", { subscribe });
+    },
+    onSuccess: (_, variables) => {
+      toast({
+        title: "Success",
+        description: variables.subscribe ? "User subscribed to newsletter!" : "User unsubscribed from newsletter!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to toggle subscription.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmitCreate = (data: AdminCreateUser) => {
     createUserMutation.mutate(data);
   };
@@ -207,6 +228,7 @@ export default function UserManagement() {
       "Company",
       "Bio",
       "Status",
+      "Newsletter",
       "Points",
       "Expertise Tags",
       "Badges",
@@ -225,6 +247,7 @@ export default function UserManagement() {
           `"${(user.company || "").replace(/"/g, '""')}"`,
           `"${(user.bio || "").replace(/"/g, '""')}"`,
           user.isActive ? "Active" : "Inactive",
+          user.isSubscribed ? "Subscribed" : "Not Subscribed",
           user.points || 0,
           `"${(user.expertiseTags || []).join("; ")}"`,
           `"${(user.badges || []).join("; ")}"`,
@@ -376,6 +399,7 @@ export default function UserManagement() {
                       <TableHead>Company</TableHead>
                       <TableHead>Signed Up</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Newsletter</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -403,6 +427,28 @@ export default function UserManagement() {
                           >
                             {user.isActive ? "Active" : "Inactive"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleSubscriptionMutation.mutate({ 
+                              userId: user.id, 
+                              subscribe: !user.isSubscribed 
+                            })}
+                            disabled={toggleSubscriptionMutation.isPending}
+                            className={user.isSubscribed 
+                              ? "text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950" 
+                              : "text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900"}
+                            data-testid={`button-subscription-${user.id}`}
+                            title={user.isSubscribed ? "Click to unsubscribe" : "Click to subscribe"}
+                          >
+                            {user.isSubscribed ? (
+                              <Bell className="h-4 w-4" />
+                            ) : (
+                              <BellOff className="h-4 w-4" />
+                            )}
+                          </Button>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -749,6 +795,51 @@ export default function UserManagement() {
                     )}
                   />
                 </div>
+
+                {selectedUser && (
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {selectedUser.isSubscribed ? (
+                        <Bell className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <BellOff className="h-5 w-5 text-gray-400" />
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Newsletter Subscription</p>
+                        <p className="text-sm text-gray-500">
+                          {selectedUser.isSubscribed ? "User is subscribed to the newsletter" : "User is not subscribed"}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant={selectedUser.isSubscribed ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => {
+                        const newSubscribedState = !selectedUser.isSubscribed;
+                        toggleSubscriptionMutation.mutate({
+                          userId: selectedUser.id,
+                          subscribe: newSubscribedState,
+                        }, {
+                          onSuccess: () => {
+                            setSelectedUser({
+                              ...selectedUser,
+                              isSubscribed: newSubscribedState,
+                            });
+                          },
+                        });
+                      }}
+                      disabled={toggleSubscriptionMutation.isPending}
+                      data-testid="button-edit-subscription"
+                    >
+                      {toggleSubscriptionMutation.isPending 
+                        ? "..." 
+                        : selectedUser.isSubscribed 
+                          ? "Unsubscribe" 
+                          : "Subscribe"}
+                    </Button>
+                  </div>
+                )}
 
                 <DialogFooter>
                   <Button

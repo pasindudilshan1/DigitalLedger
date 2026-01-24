@@ -49,11 +49,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const users = await storage.listUsers(filters);
       
-      // Remove password hashes from all users
-      const sanitizedUsers = users.map((user: any) => {
+      // Remove password hashes and add subscription status for all users
+      const sanitizedUsers = await Promise.all(users.map(async (user: any) => {
         const { passwordHash, ...userWithoutPassword } = user;
-        return userWithoutPassword;
-      });
+        const subscriber = user.email ? await storage.getSubscriberByEmail(user.email) : null;
+        return {
+          ...userWithoutPassword,
+          isSubscribed: !!subscriber,
+        };
+      }));
       
       res.json(sanitizedUsers);
     } catch (error) {
@@ -243,6 +247,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Admin endpoint to toggle user subscription
+  app.post('/api/admin/users/:id/subscription', isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const { subscribe } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user || !user.email) {
+        return res.status(404).json({ message: "User not found or has no email" });
+      }
+      
+      const existingSubscriber = await storage.getSubscriberByEmail(user.email);
+      
+      if (subscribe) {
+        if (!existingSubscriber) {
+          await storage.createSubscriber({
+            email: user.email,
+            categories: [],
+            frequency: "weekly",
+          });
+        }
+        res.json({ message: "User subscribed successfully", isSubscribed: true });
+      } else {
+        if (existingSubscriber) {
+          await storage.deleteSubscriber(existingSubscriber.id);
+        }
+        res.json({ message: "User unsubscribed successfully", isSubscribed: false });
+      }
+    } catch (error) {
+      console.error("Error toggling subscription:", error);
+      res.status(500).json({ message: "Failed to toggle subscription" });
     }
   });
 
