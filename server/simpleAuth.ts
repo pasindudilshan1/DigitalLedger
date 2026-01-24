@@ -1,6 +1,12 @@
 import { Express, Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
-import { loginSchema, registerSchema, LoginRequest, RegisterRequest, User } from "@shared/schema";
+import {
+  loginSchema,
+  registerSchema,
+  LoginRequest,
+  RegisterRequest,
+  User,
+} from "@shared/schema";
 import { IStorage } from "./storage";
 import { sendWelcomeEmail } from "./emailService";
 
@@ -28,7 +34,9 @@ export function setupAuth(app: Express, storage: IStorage) {
     try {
       const result = registerSchema.safeParse(req.body);
       if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid input", errors: result.error.errors });
       }
 
       const { email, password, firstName, lastName } = result.data;
@@ -36,13 +44,18 @@ export function setupAuth(app: Express, storage: IStorage) {
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email.toLowerCase());
       if (existingUser) {
-        return res.status(409).json({ message: "User already exists with this email" });
+        return res
+          .status(409)
+          .json({ message: "User already exists with this email" });
       }
 
       // Check for invitation
       const invitations = await storage.listInvitations();
-      const invitation = invitations.find((inv: any) => inv.email.toLowerCase() === email.toLowerCase() && !inv.revokedAt);
-      
+      const invitation = invitations.find(
+        (inv: any) =>
+          inv.email.toLowerCase() === email.toLowerCase() && !inv.revokedAt,
+      );
+
       // Hash password
       const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
@@ -65,19 +78,19 @@ export function setupAuth(app: Express, storage: IStorage) {
 
       // Set session
       req.session.userId = user.id;
-      
+
       // Send welcome email (don't block registration if email fails)
-      sendWelcomeEmail(user.email!, user.firstName || 'there').catch((err) => {
+      sendWelcomeEmail(user.email!, user.firstName || "there").catch((err) => {
         console.error("Failed to send welcome email:", err);
       });
-      
+
       // Save session explicitly
       req.session.save((err) => {
         if (err) {
           console.error("Session save error:", err);
           return res.status(500).json({ message: "Internal server error" });
         }
-        
+
         // Return user without password
         const { passwordHash: _, ...userResponse } = user;
         res.status(201).json(userResponse);
@@ -93,7 +106,9 @@ export function setupAuth(app: Express, storage: IStorage) {
     try {
       const result = loginSchema.safeParse(req.body);
       if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid input", errors: result.error.errors });
       }
 
       const { email, password } = result.data;
@@ -124,14 +139,14 @@ export function setupAuth(app: Express, storage: IStorage) {
 
         // Set session
         req.session.userId = user.id;
-        
+
         // Save session explicitly
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error("Session save error:", saveErr);
             return res.status(500).json({ message: "Internal server error" });
           }
-          
+
           // Return user without password
           const { passwordHash: _, ...userResponse } = user;
           res.json(userResponse);
@@ -164,11 +179,15 @@ export function setupAuth(app: Express, storage: IStorage) {
       const { currentPassword, newPassword } = req.body;
 
       if (!currentPassword || !newPassword) {
-        return res.status(400).json({ message: "Current and new password are required" });
+        return res
+          .status(400)
+          .json({ message: "Current and new password are required" });
       }
 
       if (newPassword.length < 6) {
-        return res.status(400).json({ message: "New password must be at least 6 characters" });
+        return res
+          .status(400)
+          .json({ message: "New password must be at least 6 characters" });
       }
 
       const user = await storage.getUser(req.session.userId);
@@ -176,9 +195,14 @@ export function setupAuth(app: Express, storage: IStorage) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+      const isValidPassword = await bcrypt.compare(
+        currentPassword,
+        user.passwordHash,
+      );
       if (!isValidPassword) {
-        return res.status(400).json({ message: "Current password is incorrect" });
+        return res
+          .status(400)
+          .json({ message: "Current password is incorrect" });
       }
 
       const newPasswordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
@@ -215,7 +239,11 @@ export function setupAuth(app: Express, storage: IStorage) {
 }
 
 // Middleware to check if user is authenticated
-export async function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+export async function isAuthenticated(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   if (!req.session.userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -223,7 +251,7 @@ export async function isAuthenticated(req: Request, res: Response, next: NextFun
   try {
     const storage: IStorage = (req as any).storage;
     const user = await storage.getUser(req.session.userId);
-    
+
     if (!user || !user.isActive) {
       req.session.destroy(() => {});
       return res.status(401).json({ message: "Unauthorized" });
@@ -257,13 +285,19 @@ export async function isAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 // Middleware to check if user is editor or admin
-export async function isEditorOrAdmin(req: Request, res: Response, next: NextFunction) {
+export async function isEditorOrAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   if (!req.user) {
     // First run authentication middleware
     return isAuthenticated(req, res, () => {
       const userRole = (req.user as any)?.role;
       if (userRole !== "editor" && userRole !== "admin") {
-        return res.status(403).json({ message: "Editor or admin access required" });
+        return res
+          .status(403)
+          .json({ message: "Editor or admin access required" });
       }
       next();
     });
