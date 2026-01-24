@@ -50,7 +50,7 @@ async function getUncachableSendGridClient() {
   };
 }
 
-const WELCOME_EMAIL_TEMPLATE_ID = "d-64ab79f349214e1f8ba8babefd5e6ba";
+const WELCOME_EMAIL_TEMPLATE_ID = "d-64ab79f349214e1f8ba8babefd5e6bad";
 
 export async function sendWelcomeEmail(
   userEmail: string,
