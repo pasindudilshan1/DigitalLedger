@@ -71,11 +71,8 @@ export async function sendWelcomeEmail(
     await client.send(msg);
     console.log(`Welcome email sent to ${userEmail}`);
     return true;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error sending welcome email:", error);
-    if (error.response && error.response.body) {
-      console.error("SendGrid Error Details:", JSON.stringify(error.response.body, null, 2));
-    }
     return false;
   }
 }
