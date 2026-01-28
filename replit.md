@@ -30,10 +30,14 @@ Preferred communication style: Simple, everyday language.
 - **Automatic Seeding**: Database automatically seeds with sample data on startup if empty, ensuring production readiness without manual steps. Includes users, articles, podcasts, educational resources, and forum discussions with replies.
 
 ### Authentication & Authorization
-- **Provider**: Simple username/password auth with bcrypt hashing + Replit OIDC support
+- **Provider**: Dual authentication system supporting:
+  - Simple username/password auth with bcrypt hashing
+  - Google login via Replit OIDC (supports Google, GitHub, X, Apple)
 - **Session Management**: Express sessions with PostgreSQL storage
 - **Security**: HTTP-only cookies, CSRF protection
-- **User Profiles**: Rich profiles with expertise tags, points, badges
+- **User Profiles**: Rich profiles with expertise tags, points, badges, and optional Google ID
+- **Google Login Flow**: /api/login → OIDC → /api/callback → home redirect
+- **User Linking**: Existing users are linked by email when signing in with Google
 - **Welcome Email**: Automatic welcome email sent via SendGrid when new users sign up
 
 ### Email Services
