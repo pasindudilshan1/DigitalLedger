@@ -57,7 +57,7 @@ function updateUserSession(
 
 async function upsertUser(
   claims: any,
-) {
+): Promise<boolean> {
   const userId = claims["sub"];
   const email = claims["email"];
   
@@ -78,7 +78,7 @@ async function upsertUser(
       profileImageUrl: claims["profile_image_url"],
       // role and isActive are intentionally not included to preserve existing values
     });
-    return;
+    return false; // Not a new user
   }
   
   // For new users, determine role from invitation or environment variable
@@ -101,6 +101,8 @@ async function upsertUser(
     profileImageUrl: claims["profile_image_url"],
     role: role,
   });
+  
+  return true; // This is a new user
 }
 
 export async function setupAuth(app: Express) {
@@ -115,9 +117,10 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
+    const user: any = {};
     updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
+    const isNewUser = await upsertUser(tokens.claims());
+    user.isNewUser = isNewUser;
     verified(null, user);
   };
 
@@ -146,9 +149,23 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+    passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any, info: any) => {
+      if (err) {
+        return next(err);
+      }
+      if (!user) {
+        return res.redirect("/api/login");
+      }
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          return next(loginErr);
+        }
+        // Redirect new users to onboarding, existing users to home
+        if (user.isNewUser) {
+          return res.redirect("/welcome");
+        }
+        return res.redirect("/");
+      });
     })(req, res, next);
   });
 

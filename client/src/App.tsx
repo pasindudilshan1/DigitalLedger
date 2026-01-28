@@ -30,6 +30,7 @@ import CategoryManagement from "@/pages/CategoryManagement";
 import MainPageControl from "@/pages/MainPageControl";
 import Settings from "@/pages/Settings";
 import Toolbox from "@/pages/Toolbox";
+import Welcome from "@/pages/Welcome";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -53,6 +54,9 @@ function Router() {
       
       {/* Settings page - handles auth internally, redirects to login if not authenticated */}
       <Route path="/settings" component={Settings} />
+      
+      {/* Welcome/onboarding route for new users */}
+      <Route path="/welcome" component={Welcome} />
       
       {/* Public routes - accessible to everyone */}
       <Route path="/news" component={News} />
