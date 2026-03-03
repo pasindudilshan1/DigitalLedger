@@ -71,8 +71,14 @@ export async function sendWelcomeEmail(
     await client.send(msg);
     console.log(`Welcome email sent to ${userEmail}`);
     return true;
-  } catch (error) {
-    console.error("Error sending welcome email:", error);
+  } catch (error: any) {
+    const fromAddr = error?.response?.body?.errors?.[0]?.message || "unknown";
+    console.error(
+      `Error sending welcome email to ${userEmail}. ` +
+      `Check that the 'from' address is verified as a Sender Identity in SendGrid. ` +
+      `Raw error:`,
+      error?.response?.body ?? error
+    );
     return false;
   }
 }
