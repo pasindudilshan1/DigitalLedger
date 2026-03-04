@@ -12,9 +12,10 @@ export function setupGoogleAuth(storage: IStorage) {
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUserById(id);
-      done(null, user);
+      done(null, user || false);
     } catch (error) {
-      done(error, null);
+      console.error("Failed to deserialize user from session, treating as unauthenticated:", error);
+      done(null, false);
     }
   });
 
